@@ -6,14 +6,72 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Left Column: Event Mirror -->
     <div class="space-y-6">
+        <!-- Event Header -->
         <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ event.title }}</h2>
-            <p class="text-gray-600 mb-4">{{ event.description[:200] }}...</p>
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-start space-x-3">
+                    <!-- Asset Logo -->
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {% if asset == "ETH" %}
+                        <svg class="w-8 h-8 text-white" viewBox="0 0 256 417" fill="currentColor">
+                            <path d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" fill-opacity="0.6"/>
+                            <path d="M127.962 0L0 212.32l127.962 75.639V154.158z" fill-opacity="0.45"/>
+                            <path d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" fill-opacity="0.6"/>
+                            <path d="M127.962 416.905v-104.72L0 236.585z" fill-opacity="0.45"/>
+                            <path d="M127.961 287.958l127.96-75.637-127.96-58.162z" fill-opacity="0.2"/>
+                            <path d="M0 212.32l127.96 75.638v-133.8z" fill-opacity="0.1"/>
+                        </svg>
+                        {% elif asset == "BTC" %}
+                        <span class="text-2xl font-bold text-white">₿</span>
+                        {% else %}
+                        <span class="text-2xl font-bold text-white">{{ asset[0] }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Title and Volume -->
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold text-gray-900 mb-1">{{ event.title }}</h2>
+                        <div class="flex items-center space-x-3 text-sm text-gray-500">
+                            <span>${{ "{:,.0f}".format(summary.total_cost * 10) }} Vol.</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Timer (placeholder - будет обновляться позже) -->
+                <div class="flex items-center space-x-4 text-sm">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900">05</div>
+                        <div class="text-xs text-gray-500 uppercase">Days</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900">16</div>
+                        <div class="text-xs text-gray-500 uppercase">Hrs</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900">54</div>
+                        <div class="text-xs text-gray-500 uppercase">Mins</div>
+                    </div>
+                </div>
+            </div>
             
-            <div class="flex items-center space-x-4 text-sm text-gray-500">
-                <span>Event: {{ event.slug }}</span>
-                <span>|</span>
-                <span>{{ event.markets|length }} markets</span>
+            <!-- End Date Badge and Polymarket Link -->
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div class="flex items-center space-x-2 text-sm">
+                    <div class="flex items-center space-x-1 bg-gray-100 rounded-full px-3 py-1">
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-xs font-medium text-gray-700">12 AM Oct 6</span>
+                    </div>
+                </div>
+                
+                <a href="https://polymarket.com/event/{{ event.slug }}" target="_blank" class="flex items-center space-x-1 text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                    </svg>
+                    <span class="text-xs font-medium">Polymarket</span>
+                </a>
             </div>
         </div>
 
