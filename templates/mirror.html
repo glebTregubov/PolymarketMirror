@@ -260,53 +260,41 @@
 
         <div class="bg-white shadow rounded-lg overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-900">Recommended Orders</h3>
-                <button 
-                    onclick="copyOrdersJSON()"
-                    class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded"
-                >
-                    Copy JSON
-                </button>
+                <h3 class="text-lg font-semibold text-gray-900">Recommended Delta-Neutral Units</h3>
+                <span class="text-xs text-gray-500">Top 2 from Upside & Downside by PnL</span>
             </div>
-            <div class="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-                {% for order in orders %}
-                <div class="p-4 hover:bg-gray-50">
-                    <div class="flex justify-between items-start mb-2">
+            <div class="divide-y divide-gray-200">
+                {% for pair in recommended_pairs %}
+                <div class="p-4 hover:bg-gray-50 {% if pair.pnl > 0.15 %}bg-green-50{% endif %}">
+                    <div class="flex justify-between items-start mb-3">
                         <div class="flex-1">
                             <div class="flex items-center space-x-2 mb-1">
-                                {% if order.strike %}
-                                <span class="font-mono text-sm font-bold text-gray-900">
-                                    ${{ "{:,.0f}".format(order.strike) }}
+                                <span class="font-mono text-lg font-bold text-gray-900">
+                                    ${{ "{:,.0f}".format(pair.strike) }}
                                 </span>
-                                {% endif %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium
-                                    {% if order.side == 'YES' %}bg-green-100 text-green-800{% else %}bg-purple-100 text-purple-800{% endif %}">
-                                    {{ order.side }}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                    {% if pair.direction == 'upside' %}bg-blue-100 text-blue-800{% else %}bg-orange-100 text-orange-800{% endif %}">
+                                    {{ pair.direction.upper() }}
                                 </span>
                             </div>
-                            <p class="text-xs text-gray-600 truncate max-w-sm">
-                                {{ order.question[:60] }}
+                            <p class="text-xs text-gray-600">
+                                NO ${{ "{:,.0f}".format(pair.strike) }} ({{ "{:.0f}".format(pair.no_price * 100) }}¢) + 
+                                YES ${{ "{:,.0f}".format(pair.partner_strike) }} ({{ "{:.0f}".format(pair.yes_price * 100) }}¢)
                             </p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <span class="text-gray-500">Units:</span>
-                            <span class="font-semibold ml-1">{{ order.units }}</span>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="text-center p-2 bg-gray-100 rounded">
+                            <div class="text-xs text-gray-500">Cost</div>
+                            <div class="font-bold text-sm">{{ "{:.0f}".format(pair.cost * 100) }}¢</div>
                         </div>
-                        <div>
-                            <span class="text-gray-500">Limit:</span>
-                            <span class="font-semibold ml-1">{{ "{:.2f}".format(order.limit_price * 100) }}¢</span>
+                        <div class="text-center p-2 bg-green-100 rounded">
+                            <div class="text-xs text-gray-500">PnL</div>
+                            <div class="font-bold text-sm text-green-700">{{ "{:.0f}".format(pair.pnl * 100) }}¢</div>
                         </div>
-                        <div>
-                            <span class="text-gray-500">Cost:</span>
-                            <span class="font-semibold ml-1">${{ "{:.2f}".format(order.cost) }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Max P&L:</span>
-                            <span class="font-semibold ml-1 text-green-600">+${{ "{:.2f}".format(order.max_profit) }}</span>
-                            <span class="text-gray-400">/</span>
-                            <span class="font-semibold text-red-600">-${{ "{:.2f}".format(order.max_loss) }}</span>
+                        <div class="text-center p-2 bg-blue-100 rounded">
+                            <div class="text-xs text-gray-500">APY</div>
+                            <div class="font-bold text-sm text-blue-700">{{ "{:.0f}".format(pair.apy) }}%</div>
                         </div>
                     </div>
                 </div>

@@ -164,6 +164,16 @@ async def index(
             pair_data['cost'],
             days_to_expiry
         )
+        pair_data['strike'] = strike
+    
+    # Select top 2 pairs from upside and downside by PnL
+    upside_pairs = [p for p in pairs.values() if p['direction'] == 'upside']
+    downside_pairs = [p for p in pairs.values() if p['direction'] == 'downside']
+    
+    top_upside = sorted(upside_pairs, key=lambda x: x['pnl'], reverse=True)[:2]
+    top_downside = sorted(downside_pairs, key=lambda x: x['pnl'], reverse=True)[:2]
+    
+    recommended_pairs = top_downside + top_upside
     
     return templates.TemplateResponse(
         "mirror.html",
@@ -177,6 +187,7 @@ async def index(
             "orders": orders,
             "summary": summary,
             "pairs": pairs,
+            "recommended_pairs": recommended_pairs,
             "days_to_expiry": days_to_expiry,
             "expiry_date": expiry_date
         }
