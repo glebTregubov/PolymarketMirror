@@ -22,6 +22,7 @@ class Market:
     no_price: float
     spread: float
     liquidity: Optional[float] = None
+    end_date: Optional[str] = None
 
 
 @dataclass
@@ -124,13 +125,14 @@ class PolymarketParser:
                         
                         if event_data:
                             markets = self._parse_markets_from_json(event_data.get('markets', []))
-                            
+
                             return Event(
                                 id=event_data.get('id', slug),
                                 title=event_data.get('title', slug),
                                 description=event_data.get('description', ''),
                                 slug=slug,
-                                markets=markets
+                                markets=markets,
+                                resolve_time=event_data.get('endDate') or event_data.get('end_date')
                             )
             
             # Fallback to HTML parsing
@@ -182,29 +184,41 @@ class PolymarketParser:
         for market_data in markets_data:
             question = market_data.get('question', '')
             strike = self.extract_strike_from_text(question)
-            
+
             # Extract YES/NO prices from outcomePrices
             outcome_prices = market_data.get('outcomePrices', [])
             yes_price = 0.5
             no_price = 0.5
-            
+
             if outcome_prices and len(outcome_prices) >= 2:
                 yes_price = float(outcome_prices[0]) if outcome_prices[0] else 0.5
                 no_price = float(outcome_prices[1]) if outcome_prices[1] else 0.5
-            
-            # Get spread from market data
+
             spread = float(market_data.get('spread', 0.02))
-            
+            liquidity_raw = market_data.get('liquidityNum') or market_data.get('liquidity')
+            liquidity = float(liquidity_raw) if liquidity_raw not in (None, "") else None
+            end_date = (
+                market_data.get('endDate')
+                or market_data.get('end_date')
+                or market_data.get('endDateIso')
+            )
+
+            # Skip markets that are closed or not accepting orders to mirror live Polymarket view
+            if market_data.get('closed') or market_data.get('acceptingOrders') is False:
+                continue
+
             market = Market(
                 id=str(market_data.get('id', f"market_{len(markets)}")),
                 question=question,
-                outcome_type="binary",
+                outcome_type=market_data.get('market_type', market_data.get('outcomeType', 'binary')),
                 strike=strike,
                 yes_price=yes_price,
                 no_price=no_price,
-                spread=spread
+                spread=spread,
+                liquidity=liquidity,
+                end_date=end_date,
             )
-            
+
             if strike:
                 markets.append(market)
         

@@ -3,13 +3,48 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import Optional, List, Dict, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import os
 
 from binance_client import BinanceClient
 from polymarket_parser import PolymarketParser, Market, EventSummary
 from strategy_engine import StrategyEngine
+
+
+def strike_value(market: Market) -> Optional[float]:
+    """Return numeric strike for a market; None when unavailable."""
+    if not market or not market.strike:
+        return None
+
+    strike = market.strike.K
+    if strike is None:
+        return None
+
+    try:
+        return float(strike)
+    except (TypeError, ValueError):
+        return None
+
+
+def split_markets_by_anchor(markets: List[Market], anchor: float) -> Tuple[List[Market], List[Market]]:
+    """Split markets into upside/downside buckets sorted relative to anchor."""
+    upside: List[Market] = []
+    downside: List[Market] = []
+
+    for market in markets:
+        strike = strike_value(market)
+        if strike is None:
+            continue
+
+        if strike > anchor:
+            upside.append(market)
+        else:
+            downside.append(market)
+
+    upside.sort(key=lambda market: strike_value(market), reverse=True)
+    downside.sort(key=lambda market: strike_value(market), reverse=True)
+    return upside, downside
 
 
 app = FastAPI(title="Polymarket Strategy Mirror")
@@ -317,8 +352,41 @@ async def mirror(
     )
     
     pairs = calculate_delta_neutral_pairs(event.markets, anchor, slug)
-    
-    return templates.TemplateResponse(
+
+    resolve_time_str = event.resolve_time
+    if not resolve_time_str:
+        for market in event.markets:
+            if market.end_date:
+                resolve_time_str = market.end_date
+                break
+
+    now_utc = datetime.now(timezone.utc)
+    countdown = None
+    if resolve_time_str:
+        try:
+            target_dt = datetime.fromisoformat(resolve_time_str.replace("Z", "+00:00"))
+            if target_dt.tzinfo is None:
+                target_dt = target_dt.replace(tzinfo=timezone.utc)
+            delta = target_dt - now_utc
+            if delta.total_seconds() < 0:
+                delta = timedelta(0)
+            days = delta.days
+            hours, remainder = divmod(delta.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            countdown = {
+                "days": f"{days:02d}",
+                "hours": f"{hours:02d}",
+                "minutes": f"{minutes:02d}",
+                "target_iso": target_dt.isoformat()
+            }
+        except ValueError:
+            countdown = None
+
+    last_updated = now_utc.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
+    upside_markets, downside_markets = split_markets_by_anchor(event.markets, anchor)
+
+    response = templates.TemplateResponse(
         "mirror.html",
         {
             "request": request,
@@ -327,11 +395,20 @@ async def mirror(
             "asset": asset,
             "budget": budget,
             "bias": bias,
+            "slug": slug,
+            "risk_cap": risk_cap,
             "orders": orders,
             "summary": summary,
-            "pairs": pairs
+            "pairs": pairs,
+            "upside_markets": upside_markets,
+            "downside_markets": downside_markets,
+            "countdown": countdown,
+            "last_updated": last_updated
         }
     )
+
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/api/spot-price")
