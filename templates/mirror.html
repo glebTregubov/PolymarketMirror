@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }} - Strategy Mirror{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left Column: Event Mirror -->
+    <div class="space-y-6">
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ event.title }}</h2>
+            <p class="text-gray-600 mb-4">{{ event.description[:200] }}...</p>
+            
+            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                <span>Event: {{ event.slug }}</span>
+                <span>|</span>
+                <span>{{ event.markets|length }} markets</span>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Current Anchor Price</h3>
+            <div class="flex items-baseline space-x-2">
+                <span class="text-3xl font-bold text-blue-600">${{ "{:,.2f}".format(anchor) }}</span>
+                <span class="text-gray-500">{{ asset }}/USDT</span>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Markets & Strikes</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Strike</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Question</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">YES</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">NO</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for market in event.markets %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if market.strike %}
+                                <span class="font-mono text-sm font-semibold">
+                                    ${{ "{:,.0f}".format(market.strike.K) }}
+                                </span>
+                                {% else %}
+                                <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900 max-w-xs truncate">
+                                    {{ market.question[:80] }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <span class="text-sm font-medium text-green-600">
+                                    {{ "{:.2f}".format(market.yes_price * 100) }}¢
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <span class="text-sm font-medium text-purple-600">
+                                    {{ "{:.2f}".format(market.no_price * 100) }}¢
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Strategy & Orders -->
+    <div class="space-y-6">
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Strategy Parameters</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="text-gray-500">Budget:</span>
+                    <span class="font-semibold ml-2">${{ "{:,.2f}".format(budget) }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Bias:</span>
+                    <span class="font-semibold ml-2">{{ "{:+.2f}".format(bias) }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Mode:</span>
+                    <span class="font-semibold ml-2">Symmetric</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Asset:</span>
+                    <span class="font-semibold ml-2">{{ asset }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Portfolio Summary</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-700">Total Cost:</span>
+                    <span class="font-bold text-lg">${{ "{:,.2f}".format(summary.total_cost) }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-700">Max Loss:</span>
+                    <span class="font-bold text-red-600">${{ "{:,.2f}".format(summary.max_loss) }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-700">Max Profit:</span>
+                    <span class="font-bold text-green-600">${{ "{:,.2f}".format(summary.max_profit) }}</span>
+                </div>
+                <div class="pt-3 border-t border-blue-300">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Upside (NO):</span>
+                        <span class="font-semibold">${{ "{:,.2f}".format(summary.up_side_cost) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Downside (YES):</span>
+                        <span class="font-semibold">${{ "{:,.2f}".format(summary.down_side_cost) }}</span>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-blue-300">
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">Total Orders:</span>
+                        <span class="font-bold">{{ summary.num_orders }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-900">Recommended Orders</h3>
+                <button 
+                    onclick="copyOrdersJSON()"
+                    class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded"
+                >
+                    Copy JSON
+                </button>
+            </div>
+            <div class="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                {% for order in orders %}
+                <div class="p-4 hover:bg-gray-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-1">
+                                {% if order.strike %}
+                                <span class="font-mono text-sm font-bold text-gray-900">
+                                    ${{ "{:,.0f}".format(order.strike) }}
+                                </span>
+                                {% endif %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium
+                                    {% if order.side == 'YES' %}bg-green-100 text-green-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                                    {{ order.side }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-600 truncate max-w-sm">
+                                {{ order.question[:60] }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-gray-500">Units:</span>
+                            <span class="font-semibold ml-1">{{ order.units }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Limit:</span>
+                            <span class="font-semibold ml-1">{{ "{:.2f}".format(order.limit_price * 100) }}¢</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Cost:</span>
+                            <span class="font-semibold ml-1">${{ "{:.2f}".format(order.cost) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Max P&L:</span>
+                            <span class="font-semibold ml-1 text-green-600">+${{ "{:.2f}".format(order.max_profit) }}</span>
+                            <span class="text-gray-400">/</span>
+                            <span class="font-semibold text-red-600">-${{ "{:.2f}".format(order.max_loss) }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyOrdersJSON() {
+    const orders = {{ orders | tojson }};
+    const json = JSON.stringify(orders, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+        alert('Orders copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}
