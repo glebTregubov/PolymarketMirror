@@ -8,7 +8,7 @@ import re
 import os
 
 from binance_client import BinanceClient
-from polymarket_parser import PolymarketParser, Market
+from polymarket_parser import PolymarketParser, Market, EventSummary
 from strategy_engine import StrategyEngine
 
 
@@ -108,88 +108,13 @@ def calculate_apy(pnl: float, cost: float, days_to_expiry: int) -> float:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(
-    request: Request,
-    budget: float = 1000.0,
-    bias: float = 0.0,
-    risk_cap: Optional[float] = None,
-    asset: str = "ETH"
-):
-    """Main page - shows Ethereum event with default parameters"""
-    slug = "what-price-will-ethereum-hit-september-29-october-5"
-    
-    # Get anchor price from Binance
-    if asset == "ETH":
-        anchor = await binance.get_eth_price() or 4000.0
-    elif asset == "SOL":
-        anchor = await binance.get_sol_price() or 200.0
-    else:
-        anchor = await binance.get_btc_price() or 95000.0
-    
-    # Parse Polymarket event
-    event = await polymarket.parse_event_by_slug(slug)
-    
-    if not event or not event.markets:
-        return templates.TemplateResponse(
-            "error.html",
-            {
-                "request": request,
-                "error": f"Could not load event: {slug}",
-                "details": "Event not found or no markets available"
-            },
-            status_code=404
-        )
-    
-    # Calculate strategy
-    orders, summary = engine.calculate_symmetric_strategy(
-        markets=event.markets,
-        anchor=anchor,
-        budget=budget,
-        bias=bias,
-        risk_cap=risk_cap
-    )
-    
-    # Calculate delta-neutral pairs and APY
-    expiry_date = extract_expiry_from_slug(slug)
-    days_to_expiry = 7  # Default fallback
-    if expiry_date:
-        days_to_expiry = max(1, (expiry_date - datetime.now()).days)
-    
-    pairs = calculate_delta_neutral_pairs(event.markets, anchor)
-    
-    # Add APY to each pair
-    for strike, pair_data in pairs.items():
-        pair_data['apy'] = calculate_apy(
-            pair_data['pnl'],
-            pair_data['cost'],
-            days_to_expiry
-        )
-        pair_data['strike'] = strike
-    
-    # Select top 2 pairs from upside and downside by PnL
-    upside_pairs = [p for p in pairs.values() if p['direction'] == 'upside']
-    downside_pairs = [p for p in pairs.values() if p['direction'] == 'downside']
-    
-    top_upside = sorted(upside_pairs, key=lambda x: x['pnl'], reverse=True)[:2]
-    top_downside = sorted(downside_pairs, key=lambda x: x['pnl'], reverse=True)[:2]
-    
-    recommended_pairs = top_downside + top_upside
-    
+async def index(request: Request):
+    """Main landing page with event selection form"""
     return templates.TemplateResponse(
-        "mirror.html",
+        "index.html",
         {
             "request": request,
-            "event": event,
-            "anchor": anchor,
-            "asset": asset,
-            "budget": budget,
-            "bias": bias,
-            "orders": orders,
-            "summary": summary,
-            "pairs": pairs,
-            "recommended_pairs": recommended_pairs,
-            "days_to_expiry": days_to_expiry,
-            "expiry_date": expiry_date
+            "example_slug": "what-price-will-ethereum-hit-september-29-october-5"
         }
     )
 
@@ -289,6 +214,22 @@ async def demo(
             "bias": bias,
             "orders": orders,
             "summary": summary
+        }
+    )
+
+
+@app.get("/events", response_class=HTMLResponse)
+async def events_list(request: Request):
+    """
+    Display list of crypto ladder events available for analysis
+    """
+    events = await polymarket.get_crypto_events(assets=["BTC", "ETH", "SOL"])
+    
+    return templates.TemplateResponse(
+        "events.html",
+        {
+            "request": request,
+            "events": events
         }
     )
 

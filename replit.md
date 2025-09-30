@@ -4,21 +4,34 @@
 
 This application is a delta-neutral strategy analysis tool for Polymarket ladder events (binary options on crypto price levels). It fetches live spot prices from Binance and calculates optimal unit allocations across strike prices based on user-defined budget, risk tolerance, and directional bias. The system provides actionable order recommendations for traders seeking to construct balanced options portfolios.
 
-**Current Status: MVP v1.0 - PRODUCTION READY**
+**Current Status: MVP v1.1 - PRODUCTION READY**
 - ✅ Symmetric delta-neutral strategy calculations
 - ✅ Budget enforcement with remaining_budget tracking
 - ✅ Risk cap implementation (max loss constraint)
 - ✅ Real-time Binance spot prices via data-api.binance.vision (BTC/ETH/SOL)
 - ✅ Live Polymarket data extraction from __NEXT_DATA__ JSON with real YES/NO prices
-- ✅ Main page shows live Ethereum event with real-time calculations
-- ✅ Default parameters: Budget $1000, Bias 0 (neutral), Asset ETH
+- ✅ **Event selection menu** with curated list of BTC/ETH/SOL ladder events
+- ✅ **Delta-neutral unit pairs** displayed in main table and recommended section
+- ✅ **APY calculations** based on days to expiration
+- ✅ **Color-coded pair badges** (green YES / red NO) in recommendations
+- ✅ **Profit projections** in dollars for recommended pairs
+- ✅ `/events` page for browsing crypto events by asset
+- ✅ Main page now has browse button + manual slug input
 - ✅ Demo mode with BTC test data (`/demo` endpoint)
 
+**Recent Changes (Sept 30, 2025):**
+1. Added `/events` endpoint with event selection UI
+2. Delta-neutral pairs now show as color-coded badges in recommendations
+3. Profit calculations added (budget / cost * pnl)
+4. Hardcoded event list for MVP (11 events across BTC/ETH/SOL)
+5. Main page redesigned with prominent "Browse Events" button
+
 **Next Phase:**
-- Settings UI for customizing budget, bias, risk cap, and asset selection
-- WebSocket support for real-time price updates
+- Dynamic event parsing from /crypto page (replace hardcoded list)
+- WebSocket support for real-time price updates  
 - Core-NO and Core-YES strategy modes
 - Historical data analysis and backtesting
+- Settings UI for customizing parameters
 
 ## User Preferences
 

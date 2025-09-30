@@ -34,6 +34,16 @@ class Event:
     resolve_time: Optional[str] = None
 
 
+@dataclass
+class EventSummary:
+    """Lightweight event summary for listing pages"""
+    title: str
+    slug: str
+    asset: str  # BTC, ETH, SOL
+    volume: Optional[str] = None
+    num_markets: int = 0
+
+
 class PolymarketParser:
     def __init__(self, base_url: str = "https://polymarket.com"):
         self.base_url = base_url
@@ -239,6 +249,39 @@ class PolymarketParser:
                 markets.append(market)
         
         return markets
+    
+    async def get_crypto_events(self, assets: List[str] = ["BTC", "ETH", "SOL"]) -> List[EventSummary]:
+        """
+        Get list of crypto ladder events for given assets.
+        
+        For MVP, returns a curated list of known events from Polymarket's crypto category.
+        TODO: Implement dynamic parsing from /crypto page in future version.
+        """
+        # Hardcoded list of known crypto ladder events (updated regularly)
+        known_events = [
+            # Bitcoin events
+            EventSummary(title="What price will Bitcoin hit September 29-October 5?", slug="what-price-will-bitcoin-hit-september-29-october-5", asset="BTC", volume="$8.7k", num_markets=15),
+            EventSummary(title="Bitcoin above ___ on September 30?", slug="bitcoin-above-on-september-30", asset="BTC", volume="$2.3k", num_markets=11),
+            EventSummary(title="Bitcoin price on September 30?", slug="bitcoin-price-on-september-30", asset="BTC", volume="$1.5k", num_markets=11),
+            EventSummary(title="What price will Bitcoin hit in September?", slug="what-price-will-bitcoin-hit-in-september", asset="BTC", volume="$0", num_markets=15),
+            
+            # Ethereum events  
+            EventSummary(title="What price will Ethereum hit September 29-October 5?", slug="what-price-will-ethereum-hit-september-29-october-5", asset="ETH", volume="$8.7k", num_markets=15),
+            EventSummary(title="Ethereum above ___ on September 30?", slug="ethereum-above-on-september-30", asset="ETH", volume="$1.8k", num_markets=11),
+            EventSummary(title="Ethereum price on September 30?", slug="ethereum-price-on-september-30", asset="ETH", volume="$0.9k", num_markets=11),
+            EventSummary(title="What price will Ethereum hit in September?", slug="what-price-will-ethereum-hit-in-september", asset="ETH", volume="$0", num_markets=15),
+            
+            # Solana events
+            EventSummary(title="What price will Solana hit September 29-October 5?", slug="what-price-will-solana-hit-september-29-october-5", asset="SOL", volume="$4.2k", num_markets=13),
+            EventSummary(title="Solana above ___ on September 30?", slug="solana-above-on-september-30", asset="SOL", volume="$1.1k", num_markets=10),
+            EventSummary(title="What price will Solana hit in September?", slug="what-price-will-solana-hit-in-september", asset="SOL", volume="$0", num_markets=13),
+        ]
+        
+        # Filter by requested assets
+        filtered = [e for e in known_events if e.asset in assets]
+        
+        print(f"Returning {len(filtered)} known crypto events for assets: {assets}")
+        return filtered
     
     async def close(self):
         """Close the HTTP client"""

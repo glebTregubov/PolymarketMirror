@@ -2,8 +2,22 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
+    <!-- Quick Browse Button -->
+    <div class="mb-6">
+        <a href="/events" 
+           class="block bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-4 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 transition shadow-lg">
+            <div class="flex items-center justify-center space-x-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <span class="text-xl font-bold">Browse Crypto Events (BTC, ETH, SOL)</span>
+            </div>
+            <p class="text-sm mt-1 text-blue-100">Quick access to live ladder events</p>
+        </a>
+    </div>
+
     <div class="bg-white shadow rounded-lg p-8">
-        <h2 class="text-2xl font-bold text-gray-900 mb-6">Analyze Polymarket Event</h2>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Or Enter Event Manually</h2>
         
         <form action="/mirror" method="get" class="space-y-6">
             <div>
