@@ -27,6 +27,9 @@ This application is a delta-neutral strategy analysis tool for Polymarket ladder
 5. Main page redesigned with prominent "Browse Events" button
 6. **Fixed:** Event selection from menu now works correctly (added missing `pairs` variable)
 7. **Fixed:** APY calculations now included in delta-neutral pairs display
+8. **Deployment optimization:** Added `/health` endpoint for fast health checks
+9. **Deployment optimization:** Implemented lazy loading for all external clients (Binance, Polymarket)
+10. **Deployment optimization:** Improved startup time by deferring client initialization until first use
 
 **Next Phase:**
 - Dynamic event parsing from /crypto page (replace hardcoded list)

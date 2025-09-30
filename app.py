@@ -17,9 +17,33 @@ app = FastAPI(title="Polymarket Strategy Mirror")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-binance = BinanceClient()
-polymarket = PolymarketParser()
-engine = StrategyEngine()
+_binance = None
+_polymarket = None
+_engine = None
+
+
+def get_binance() -> BinanceClient:
+    """Lazy-load Binance client"""
+    global _binance
+    if _binance is None:
+        _binance = BinanceClient()
+    return _binance
+
+
+def get_polymarket() -> PolymarketParser:
+    """Lazy-load Polymarket parser"""
+    global _polymarket
+    if _polymarket is None:
+        _polymarket = PolymarketParser()
+    return _polymarket
+
+
+def get_engine() -> StrategyEngine:
+    """Lazy-load Strategy engine"""
+    global _engine
+    if _engine is None:
+        _engine = StrategyEngine()
+    return _engine
 
 
 def extract_expiry_from_slug(slug: str) -> Optional[datetime]:
@@ -116,6 +140,12 @@ def calculate_apy(pnl: float, cost: float, days_to_expiry: int) -> float:
     return apy
 
 
+@app.get("/health")
+async def health():
+    """Health check endpoint for deployment"""
+    return {"status": "ok", "service": "polymarket-strategy-mirror"}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Main landing page with event selection form"""
@@ -142,11 +172,11 @@ async def demo(
     from polymarket_parser import Event, Market, StrikeMeta
     
     if asset == "ETH":
-        anchor = await binance.get_eth_price() or 4000.0
+        anchor = await get_binance().get_eth_price() or 4000.0
     elif asset == "SOL":
-        anchor = await binance.get_sol_price() or 200.0
+        anchor = await get_binance().get_sol_price() or 200.0
     else:
-        anchor = await binance.get_btc_price() or 95000.0
+        anchor = await get_binance().get_btc_price() or 95000.0
     
     demo_markets = [
         Market(
@@ -204,7 +234,7 @@ async def demo(
         markets=demo_markets
     )
     
-    orders, summary = engine.calculate_symmetric_strategy(
+    orders, summary = get_engine().calculate_symmetric_strategy(
         markets=event.markets,
         anchor=anchor,
         budget=budget,
@@ -232,7 +262,7 @@ async def events_list(request: Request):
     """
     Display list of crypto ladder events available for analysis
     """
-    events = await polymarket.get_crypto_events(assets=["BTC", "ETH", "SOL"])
+    events = await get_polymarket().get_crypto_events(assets=["BTC", "ETH", "SOL"])
     
     return templates.TemplateResponse(
         "events.html",
@@ -255,7 +285,7 @@ async def mirror(
     """
     Mirror page showing Polymarket event with strategy calculations
     """
-    event = await polymarket.parse_event_by_slug(slug)
+    event = await get_polymarket().parse_event_by_slug(slug)
     
     if not event:
         return templates.TemplateResponse(
@@ -267,18 +297,18 @@ async def mirror(
         )
     
     if asset == "BTC":
-        anchor = await binance.get_btc_price()
+        anchor = await get_binance().get_btc_price()
     elif asset == "ETH":
-        anchor = await binance.get_eth_price()
+        anchor = await get_binance().get_eth_price()
     elif asset == "SOL":
-        anchor = await binance.get_sol_price()
+        anchor = await get_binance().get_sol_price()
     else:
         anchor = 50000.0
     
     if not anchor:
         anchor = 50000.0
     
-    orders, summary = engine.calculate_symmetric_strategy(
+    orders, summary = get_engine().calculate_symmetric_strategy(
         markets=event.markets,
         anchor=anchor,
         budget=budget,
@@ -308,11 +338,11 @@ async def mirror(
 async def get_spot_price(asset: str = "BTC"):
     """Get current spot price from Binance"""
     if asset == "BTC":
-        price = await binance.get_btc_price()
+        price = await get_binance().get_btc_price()
     elif asset == "ETH":
-        price = await binance.get_eth_price()
+        price = await get_binance().get_eth_price()
     elif asset == "SOL":
-        price = await binance.get_sol_price()
+        price = await get_binance().get_sol_price()
     else:
         return JSONResponse({"error": "Invalid asset"}, status_code=400)
     
@@ -331,24 +361,24 @@ async def calculate_strategy(
     asset: str = Form("BTC")
 ):
     """Calculate strategy and return JSON"""
-    event = await polymarket.parse_event_by_slug(slug)
+    event = await get_polymarket().parse_event_by_slug(slug)
     
     if not event:
         return JSONResponse({"error": "Event not found"}, status_code=404)
     
     if asset == "BTC":
-        anchor = await binance.get_btc_price()
+        anchor = await get_binance().get_btc_price()
     elif asset == "ETH":
-        anchor = await binance.get_eth_price()
+        anchor = await get_binance().get_eth_price()
     elif asset == "SOL":
-        anchor = await binance.get_sol_price()
+        anchor = await get_binance().get_sol_price()
     else:
         anchor = 50000.0
     
     if not anchor:
         anchor = 50000.0
     
-    orders, summary = engine.calculate_symmetric_strategy(
+    orders, summary = get_engine().calculate_symmetric_strategy(
         markets=event.markets,
         anchor=anchor,
         budget=budget,
@@ -390,9 +420,11 @@ async def calculate_strategy(
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on shutdown"""
-    await binance.close()
-    await polymarket.close()
+    """Cleanup on shutdown - only close clients if they were initialized"""
+    if _binance is not None:
+        await _binance.close()
+    if _polymarket is not None:
+        await _polymarket.close()
 
 
 if __name__ == "__main__":
