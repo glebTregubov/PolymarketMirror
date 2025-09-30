@@ -25,6 +25,8 @@ This application is a delta-neutral strategy analysis tool for Polymarket ladder
 3. Profit calculations added (budget / cost * pnl)
 4. Hardcoded event list for MVP (11 events across BTC/ETH/SOL)
 5. Main page redesigned with prominent "Browse Events" button
+6. **Fixed:** Event selection from menu now works correctly (added missing `pairs` variable)
+7. **Fixed:** APY calculations now included in delta-neutral pairs display
 
 **Next Phase:**
 - Dynamic event parsing from /crypto page (replace hardcoded list)

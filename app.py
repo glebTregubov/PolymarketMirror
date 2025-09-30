@@ -51,7 +51,7 @@ def extract_expiry_from_slug(slug: str) -> Optional[datetime]:
     return None
 
 
-def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[float, Dict]:
+def calculate_delta_neutral_pairs(markets: List[Market], anchor: float, slug: str = None) -> Dict[float, Dict]:
     """
     Calculate delta-neutral unit pairs for each strike.
     
@@ -60,9 +60,16 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[
     
     Skip resolved markets (where YES=1.0 or NO=1.0)
     
-    Returns: {strike: {'partner_strike': float, 'cost': float, 'pnl': float, 'yes_price': float, 'no_price': float}}
+    Returns: {strike: {'partner_strike': float, 'cost': float, 'pnl': float, 'yes_price': float, 'no_price': float, 'apy': float}}
     """
     pairs = {}
+    
+    # Calculate days to expiry for APY
+    days_to_expiry = 7  # Default
+    if slug:
+        expiry = extract_expiry_from_slug(slug)
+        if expiry:
+            days_to_expiry = max(1, (expiry - datetime.now()).days)
     
     # Filter out resolved markets and sort by strike (ascending order)
     open_markets = sorted(
@@ -82,6 +89,7 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[
                 
             cost = market.no_price + partner.yes_price
             pnl = 1.0 - cost
+            apy = calculate_apy(pnl, cost, days_to_expiry)
             
             direction = 'downside' if strike <= anchor else 'upside'
             
@@ -91,7 +99,8 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[
                 'pnl': pnl,
                 'no_price': market.no_price,
                 'yes_price': partner.yes_price,
-                'direction': direction
+                'direction': direction,
+                'apy': apy
             }
     
     return pairs
@@ -277,6 +286,8 @@ async def mirror(
         risk_cap=risk_cap
     )
     
+    pairs = calculate_delta_neutral_pairs(event.markets, anchor, slug)
+    
     return templates.TemplateResponse(
         "mirror.html",
         {
@@ -287,7 +298,8 @@ async def mirror(
             "budget": budget,
             "bias": bias,
             "orders": orders,
-            "summary": summary
+            "summary": summary,
+            "pairs": pairs
         }
     )
 
