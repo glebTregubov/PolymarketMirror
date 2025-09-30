@@ -55,8 +55,8 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[
     """
     Calculate delta-neutral unit pairs for each strike.
     
-    For downside (strike <= anchor): Buy NO at current + Buy YES at strike below
-    For upside (strike > anchor): Buy YES at current + Buy NO at strike above
+    For ALL strikes: Buy NO at current strike + Buy YES at strike BELOW
+    This creates delta-neutral units regardless of direction.
     
     Skip resolved markets (where YES=1.0 or NO=1.0)
     
@@ -73,42 +73,26 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[
     for i, market in enumerate(open_markets):
         strike = market.strike.K
         
-        if strike <= anchor:
-            # Downside: Buy NO at current + Buy YES at strike BELOW (lower strike)
-            if i > 0:
-                partner = open_markets[i - 1]  # Lower strike (below)
-                # Skip if partner is also resolved
-                if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
-                    continue
-                    
-                cost = market.no_price + partner.yes_price
-                pnl = 1.0 - cost
-                pairs[strike] = {
-                    'partner_strike': partner.strike.K,
-                    'cost': cost,
-                    'pnl': pnl,
-                    'no_price': market.no_price,
-                    'yes_price': partner.yes_price,
-                    'direction': 'downside'
-                }
-        else:
-            # Upside: Buy YES at current + Buy NO at strike ABOVE (higher strike)
-            if i < len(open_markets) - 1:
-                partner = open_markets[i + 1]  # Higher strike (above)
-                # Skip if partner is also resolved
-                if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
-                    continue
-                    
-                cost = market.yes_price + partner.no_price
-                pnl = 1.0 - cost
-                pairs[strike] = {
-                    'partner_strike': partner.strike.K,
-                    'cost': cost,
-                    'pnl': pnl,
-                    'yes_price': market.yes_price,
-                    'no_price': partner.no_price,
-                    'direction': 'upside'
-                }
+        # For all strikes: Buy NO at current + Buy YES at strike BELOW
+        if i > 0:
+            partner = open_markets[i - 1]  # Lower strike (below)
+            # Skip if partner is also resolved
+            if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
+                continue
+                
+            cost = market.no_price + partner.yes_price
+            pnl = 1.0 - cost
+            
+            direction = 'downside' if strike <= anchor else 'upside'
+            
+            pairs[strike] = {
+                'partner_strike': partner.strike.K,
+                'cost': cost,
+                'pnl': pnl,
+                'no_price': market.no_price,
+                'yes_price': partner.yes_price,
+                'direction': direction
+            }
     
     return pairs
 
