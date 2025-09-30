@@ -28,6 +28,9 @@
         <div class="bg-white shadow rounded-lg overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">Markets & Strikes</h3>
+                <p class="text-xs text-amber-600 mt-1">
+                    ⚠️ MVP: Prices shown are placeholders (50¢). Production will use live Polymarket API data.
+                </p>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -192,7 +195,21 @@
 
 <script>
 function copyOrdersJSON() {
-    const orders = {{ orders | tojson }};
+    const orders = [
+        {% for order in orders %}
+        {
+            "market_id": "{{ order.market_id }}",
+            "question": "{{ order.question }}",
+            "strike": {{ order.strike if order.strike else 'null' }},
+            "side": "{{ order.side }}",
+            "units": {{ order.units }},
+            "limit_price": {{ order.limit_price }},
+            "cost": {{ order.cost }},
+            "max_profit": {{ order.max_profit }},
+            "max_loss": {{ order.max_loss }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
     const json = JSON.stringify(orders, null, 2);
     navigator.clipboard.writeText(json).then(() => {
         alert('Orders copied to clipboard!');

@@ -27,7 +27,101 @@ async def index(request: Request):
         "index.html",
         {
             "request": request,
-            "example_slug": "will-bitcoin-hit-120k-by-dec-31-2025"
+            "example_slug": "demo"
+        }
+    )
+
+
+@app.get("/demo", response_class=HTMLResponse)
+async def demo(
+    request: Request,
+    budget: float = 1000.0,
+    bias: float = 0.0,
+    risk_cap: Optional[float] = None,
+    asset: str = "BTC"
+):
+    """
+    Demo page with sample BTC ladder event
+    """
+    from polymarket_parser import Event, Market, StrikeMeta
+    
+    anchor = await binance.get_btc_price() or 95000.0
+    
+    demo_markets = [
+        Market(
+            id="btc_80k",
+            question="Will Bitcoin hit $80,000 by Dec 31, 2025?",
+            outcome_type="binary",
+            strike=StrikeMeta(raw="$80k", K=80000, unit="USD"),
+            yes_price=0.35,
+            no_price=0.65,
+            spread=0.02
+        ),
+        Market(
+            id="btc_90k",
+            question="Will Bitcoin hit $90,000 by Dec 31, 2025?",
+            outcome_type="binary",
+            strike=StrikeMeta(raw="$90k", K=90000, unit="USD"),
+            yes_price=0.42,
+            no_price=0.58,
+            spread=0.02
+        ),
+        Market(
+            id="btc_100k",
+            question="Will Bitcoin hit $100,000 by Dec 31, 2025?",
+            outcome_type="binary",
+            strike=StrikeMeta(raw="$100k", K=100000, unit="USD"),
+            yes_price=0.55,
+            no_price=0.45,
+            spread=0.02
+        ),
+        Market(
+            id="btc_110k",
+            question="Will Bitcoin hit $110,000 by Dec 31, 2025?",
+            outcome_type="binary",
+            strike=StrikeMeta(raw="$110k", K=110000, unit="USD"),
+            yes_price=0.38,
+            no_price=0.62,
+            spread=0.02
+        ),
+        Market(
+            id="btc_120k",
+            question="Will Bitcoin hit $120,000 by Dec 31, 2025?",
+            outcome_type="binary",
+            strike=StrikeMeta(raw="$120k", K=120000, unit="USD"),
+            yes_price=0.25,
+            no_price=0.75,
+            spread=0.02
+        ),
+    ]
+    
+    event = Event(
+        id="demo_btc_ladder",
+        title="Bitcoin Price Ladder - 2025",
+        description="Will Bitcoin reach these price levels by December 31, 2025?",
+        slug="demo",
+        markets=demo_markets
+    )
+    
+    orders, summary = engine.calculate_symmetric_strategy(
+        markets=event.markets,
+        anchor=anchor,
+        budget=budget,
+        bias=bias,
+        risk_cap=risk_cap
+    )
+    
+    return templates.TemplateResponse(
+        "mirror.html",
+        {
+            "request": request,
+            "event": event,
+            "anchor": anchor,
+            "asset": asset,
+            "budget": budget,
+            "bias": bias,
+            "orders": orders,
+            "summary": summary
         }
     )
 

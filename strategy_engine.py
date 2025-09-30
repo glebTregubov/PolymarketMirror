@@ -127,13 +127,17 @@ class StrategyEngine:
         
         orders = []
         
+        risk_cap_down = risk_cap / 2 if risk_cap else None
+        risk_cap_up = risk_cap / 2 if risk_cap else None
+        
         if markets_below:
             weights_down = self._calculate_weights(markets_below, anchor, direction="below")
             orders_down = self._allocate_units(
                 markets_below, 
                 weights_down, 
                 budget_down, 
-                "YES"
+                "YES",
+                risk_cap_down
             )
             orders.extend(orders_down)
         
@@ -143,7 +147,8 @@ class StrategyEngine:
                 markets_above,
                 weights_up,
                 budget_up,
-                "NO"
+                "NO",
+                risk_cap_up
             )
             orders.extend(orders_up)
         
@@ -183,12 +188,16 @@ class StrategyEngine:
         markets: List[Market],
         weights: Dict[str, float],
         budget: float,
-        side: str
+        side: str,
+        risk_cap: Optional[float] = None
     ) -> List[OrderRecommendation]:
         """
         Allocate units across markets based on weights and budget.
+        Enforces budget constraint and optional risk cap.
         """
         orders = []
+        remaining_budget = budget
+        accumulated_risk = 0.0
         
         for market in markets:
             weight = weights.get(market.id, 0)
@@ -196,21 +205,38 @@ class StrategyEngine:
             if weight == 0:
                 continue
             
-            market_budget = budget * weight
+            market_budget = min(budget * weight, remaining_budget)
             
             price = market.yes_price if side == "YES" else market.no_price
             
-            if price <= 0:
+            if price <= 0 or market_budget < price:
                 continue
             
             units_float = market_budget / price
-            units = max(1, round(units_float))
+            units = int(math.floor(units_float))
+            
+            if units == 0:
+                continue
             
             actual_cost = units * price
+            
+            if actual_cost > remaining_budget:
+                units = int(math.floor(remaining_budget / price))
+                if units == 0:
+                    continue
+                actual_cost = units * price
             
             limit_price = min(price + self.slippage_limit, 0.99)
             
             max_profit, max_loss = self.calculate_pnl(price, side)
+            
+            potential_risk = accumulated_risk + (max_loss * units)
+            if risk_cap and potential_risk > risk_cap:
+                max_units_by_risk = int(math.floor((risk_cap - accumulated_risk) / max_loss))
+                if max_units_by_risk <= 0:
+                    continue
+                units = min(units, max_units_by_risk)
+                actual_cost = units * price
             
             order = OrderRecommendation(
                 market_id=market.id,
@@ -225,6 +251,11 @@ class StrategyEngine:
             )
             
             orders.append(order)
+            remaining_budget -= actual_cost
+            accumulated_risk += max_loss * units
+            
+            if remaining_budget <= 0:
+                break
         
         return orders
     
