@@ -56,7 +56,7 @@ cd PolymarketMirror
 pip install uv
 
 # Install dependencies
-uv pip install -r pyproject.toml
+uv pip install --system .
 
 # Run the application
 uvicorn app:app --host 0.0.0.0 --port 5000 --reload
