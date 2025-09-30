@@ -103,6 +103,7 @@
                             {% for market in upside_markets %}
                             {% set order_match = orders | selectattr('strike', 'equalto', market.strike.K) | list %}
                             {% set has_order = order_match | length > 0 %}
+                            {% set pair_info = pairs.get(market.strike.K) %}
                             <tr class="hover:bg-gray-50 {% if has_order %}bg-green-50{% endif %}">
                                 <td class="px-6 py-3 whitespace-nowrap w-24">
                                     <div class="flex items-center space-x-1">
@@ -122,6 +123,13 @@
                                         <button class="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm font-medium hover:bg-red-200">
                                             Buy No {{ "{:.0f}".format(market.no_price * 100) }}¢
                                         </button>
+                                        {% if pair_info %}
+                                        <div class="ml-3 px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs">
+                                            <span class="text-gray-700">Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢</span>
+                                            <span class="text-green-600 font-semibold ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
+                                            <span class="text-blue-600 font-semibold ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -153,6 +161,7 @@
                             {% for market in downside_markets %}
                             {% set order_match = orders | selectattr('strike', 'equalto', market.strike.K) | list %}
                             {% set has_order = order_match | length > 0 %}
+                            {% set pair_info = pairs.get(market.strike.K) %}
                             <tr class="hover:bg-gray-50 {% if has_order %}bg-green-50{% endif %}">
                                 <td class="px-6 py-3 whitespace-nowrap w-24">
                                     <div class="flex items-center space-x-1">
@@ -172,6 +181,13 @@
                                         <button class="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm font-medium hover:bg-red-200">
                                             Buy No {{ "{:.0f}".format(market.no_price * 100) }}¢
                                         </button>
+                                        {% if pair_info %}
+                                        <div class="ml-3 px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs">
+                                            <span class="text-gray-700">Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢</span>
+                                            <span class="text-green-600 font-semibold ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
+                                            <span class="text-blue-600 font-semibold ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>

@@ -2,11 +2,13 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
+from datetime import datetime, timedelta
+import re
 import os
 
 from binance_client import BinanceClient
-from polymarket_parser import PolymarketParser
+from polymarket_parser import PolymarketParser, Market
 from strategy_engine import StrategyEngine
 
 
@@ -18,6 +20,107 @@ templates = Jinja2Templates(directory="templates")
 binance = BinanceClient()
 polymarket = PolymarketParser()
 engine = StrategyEngine()
+
+
+def extract_expiry_from_slug(slug: str) -> Optional[datetime]:
+    """Extract expiration date from event slug like 'september-29-october-5'"""
+    month_map = {
+        'january': 1, 'february': 2, 'march': 3, 'april': 4,
+        'may': 5, 'june': 6, 'july': 7, 'august': 8,
+        'september': 9, 'october': 10, 'november': 11, 'december': 12
+    }
+    
+    # Pattern: "month-day" at the end (e.g., "october-5")
+    pattern = r'(\w+)-(\d{1,2})(?:\D|$)'
+    matches = re.findall(pattern, slug.lower())
+    
+    if matches:
+        # Take the last date mentioned (usually the end date)
+        month_str, day_str = matches[-1]
+        month = month_map.get(month_str)
+        if month:
+            day = int(day_str)
+            year = datetime.now().year
+            # If month has passed this year, assume next year
+            expiry = datetime(year, month, day)
+            if expiry < datetime.now():
+                expiry = datetime(year + 1, month, day)
+            # Add one day since expiry is typically at midnight of next day
+            return expiry + timedelta(days=1)
+    
+    return None
+
+
+def calculate_delta_neutral_pairs(markets: List[Market], anchor: float) -> Dict[float, Dict]:
+    """
+    Calculate delta-neutral unit pairs for each strike.
+    
+    For downside (strike <= anchor): Buy NO at current + Buy YES at strike below
+    For upside (strike > anchor): Buy YES at current + Buy NO at strike above
+    
+    Skip resolved markets (where YES=1.0 or NO=1.0)
+    
+    Returns: {strike: {'partner_strike': float, 'cost': float, 'pnl': float, 'yes_price': float, 'no_price': float}}
+    """
+    pairs = {}
+    
+    # Filter out resolved markets and sort by strike (ascending order)
+    open_markets = sorted(
+        [m for m in markets if m.strike and m.yes_price < 0.99 and m.no_price < 0.99],
+        key=lambda m: m.strike.K
+    )
+    
+    for i, market in enumerate(open_markets):
+        strike = market.strike.K
+        
+        if strike <= anchor:
+            # Downside: Buy NO at current + Buy YES at strike BELOW (lower strike)
+            if i > 0:
+                partner = open_markets[i - 1]  # Lower strike (below)
+                # Skip if partner is also resolved
+                if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
+                    continue
+                    
+                cost = market.no_price + partner.yes_price
+                pnl = 1.0 - cost
+                pairs[strike] = {
+                    'partner_strike': partner.strike.K,
+                    'cost': cost,
+                    'pnl': pnl,
+                    'no_price': market.no_price,
+                    'yes_price': partner.yes_price,
+                    'direction': 'downside'
+                }
+        else:
+            # Upside: Buy YES at current + Buy NO at strike ABOVE (higher strike)
+            if i < len(open_markets) - 1:
+                partner = open_markets[i + 1]  # Higher strike (above)
+                # Skip if partner is also resolved
+                if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
+                    continue
+                    
+                cost = market.yes_price + partner.no_price
+                pnl = 1.0 - cost
+                pairs[strike] = {
+                    'partner_strike': partner.strike.K,
+                    'cost': cost,
+                    'pnl': pnl,
+                    'yes_price': market.yes_price,
+                    'no_price': partner.no_price,
+                    'direction': 'upside'
+                }
+    
+    return pairs
+
+
+def calculate_apy(pnl: float, cost: float, days_to_expiry: int) -> float:
+    """Calculate APY from PnL, cost, and days to expiry"""
+    if cost <= 0 or days_to_expiry <= 0:
+        return 0.0
+    
+    return_pct = (pnl / cost) * 100
+    apy = return_pct * (365 / days_to_expiry)
+    return apy
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -62,6 +165,22 @@ async def index(
         risk_cap=risk_cap
     )
     
+    # Calculate delta-neutral pairs and APY
+    expiry_date = extract_expiry_from_slug(slug)
+    days_to_expiry = 7  # Default fallback
+    if expiry_date:
+        days_to_expiry = max(1, (expiry_date - datetime.now()).days)
+    
+    pairs = calculate_delta_neutral_pairs(event.markets, anchor)
+    
+    # Add APY to each pair
+    for strike, pair_data in pairs.items():
+        pair_data['apy'] = calculate_apy(
+            pair_data['pnl'],
+            pair_data['cost'],
+            days_to_expiry
+        )
+    
     return templates.TemplateResponse(
         "mirror.html",
         {
@@ -72,7 +191,10 @@ async def index(
             "budget": budget,
             "bias": bias,
             "orders": orders,
-            "summary": summary
+            "summary": summary,
+            "pairs": pairs,
+            "days_to_expiry": days_to_expiry,
+            "expiry_date": expiry_date
         }
     )
 
