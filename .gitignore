@@ -43,6 +43,7 @@ replit.nix
 .cache/
 .upm/
 .pythonlibs/
+attached_assets/
 
 # Testing
 .pytest_cache/
