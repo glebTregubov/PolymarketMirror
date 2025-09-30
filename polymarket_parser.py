@@ -89,8 +89,7 @@ class PolymarketParser:
         """
         Parse Polymarket event page by slug.
         
-        For MVP: This is a basic HTML parser.
-        In production, we'll use official Polymarket API.
+        Extracts data from Next.js __NEXT_DATA__ JSON embedded in HTML.
         """
         url = f"{self.base_url}/event/{slug}"
         
@@ -100,6 +99,31 @@ class PolymarketParser:
             
             soup = BeautifulSoup(response.text, 'lxml')
             
+            # Try to extract from __NEXT_DATA__ (Next.js embedded JSON)
+            next_data_script = soup.find('script', {'id': '__NEXT_DATA__'})
+            if next_data_script and next_data_script.string:
+                import json
+                next_data = json.loads(next_data_script.string)
+                
+                # Navigate to event data in dehydratedState
+                queries = next_data.get('props', {}).get('pageProps', {}).get('dehydratedState', {}).get('queries', [])
+                
+                for query in queries:
+                    if '/api/event/slug' in str(query.get('queryKey', [])):
+                        event_data = query.get('state', {}).get('data', {})
+                        
+                        if event_data:
+                            markets = self._parse_markets_from_json(event_data.get('markets', []))
+                            
+                            return Event(
+                                id=event_data.get('id', slug),
+                                title=event_data.get('title', slug),
+                                description=event_data.get('description', ''),
+                                slug=slug,
+                                markets=markets
+                            )
+            
+            # Fallback to HTML parsing
             title = self._extract_title(soup)
             description = self._extract_description(soup)
             markets = self._extract_markets(soup)
@@ -139,9 +163,46 @@ class PolymarketParser:
             return str(content) if content else None
         return None
     
+    def _parse_markets_from_json(self, markets_data: List[Dict[str, Any]]) -> List[Market]:
+        """
+        Parse markets from JSON data (from __NEXT_DATA__).
+        """
+        markets = []
+        
+        for market_data in markets_data:
+            question = market_data.get('question', '')
+            strike = self.extract_strike_from_text(question)
+            
+            # Extract YES/NO prices from outcomePrices
+            outcome_prices = market_data.get('outcomePrices', [])
+            yes_price = 0.5
+            no_price = 0.5
+            
+            if outcome_prices and len(outcome_prices) >= 2:
+                yes_price = float(outcome_prices[0]) if outcome_prices[0] else 0.5
+                no_price = float(outcome_prices[1]) if outcome_prices[1] else 0.5
+            
+            # Get spread from market data
+            spread = float(market_data.get('spread', 0.02))
+            
+            market = Market(
+                id=str(market_data.get('id', f"market_{len(markets)}")),
+                question=question,
+                outcome_type="binary",
+                strike=strike,
+                yes_price=yes_price,
+                no_price=no_price,
+                spread=spread
+            )
+            
+            if strike:
+                markets.append(market)
+        
+        return markets
+    
     def _extract_markets(self, soup: BeautifulSoup) -> List[Market]:
         """
-        Extract markets from event page.
+        Extract markets from event page HTML (fallback method).
         
         This is a simplified parser for MVP.
         We'll look for common patterns in Polymarket's HTML structure.
