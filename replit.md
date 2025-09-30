@@ -9,11 +9,13 @@ This application is a delta-neutral strategy analysis tool for Polymarket ladder
 - ✅ Budget enforcement with remaining_budget tracking
 - ✅ Risk cap implementation (max loss constraint)
 - ✅ Real-time Binance spot prices via data-api.binance.vision (BTC/ETH/SOL)
-- ✅ Demo mode with test data (`/demo` endpoint)
 - ✅ Live Polymarket data extraction from __NEXT_DATA__ JSON with real YES/NO prices
-- ✅ Works with real events (e.g., `what-price-will-ethereum-hit-september-29-october-5`)
+- ✅ Main page shows live Ethereum event with real-time calculations
+- ✅ Default parameters: Budget $1000, Bias 0 (neutral), Asset ETH
+- ✅ Demo mode with BTC test data (`/demo` endpoint)
 
 **Next Phase:**
+- Settings UI for customizing budget, bias, risk cap, and asset selection
 - WebSocket support for real-time price updates
 - Core-NO and Core-YES strategy modes
 - Historical data analysis and backtesting

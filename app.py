@@ -21,13 +21,58 @@ engine = StrategyEngine()
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Main page with input form"""
+async def index(
+    request: Request,
+    budget: float = 1000.0,
+    bias: float = 0.0,
+    risk_cap: Optional[float] = None,
+    asset: str = "ETH"
+):
+    """Main page - shows Ethereum event with default parameters"""
+    slug = "what-price-will-ethereum-hit-september-29-october-5"
+    
+    # Get anchor price from Binance
+    if asset == "ETH":
+        anchor = await binance.get_eth_price() or 4000.0
+    elif asset == "SOL":
+        anchor = await binance.get_sol_price() or 200.0
+    else:
+        anchor = await binance.get_btc_price() or 95000.0
+    
+    # Parse Polymarket event
+    event = await polymarket.parse_event_by_slug(slug)
+    
+    if not event or not event.markets:
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": f"Could not load event: {slug}",
+                "details": "Event not found or no markets available"
+            },
+            status_code=404
+        )
+    
+    # Calculate strategy
+    orders, summary = engine.calculate_symmetric_strategy(
+        markets=event.markets,
+        anchor=anchor,
+        budget=budget,
+        bias=bias,
+        risk_cap=risk_cap
+    )
+    
     return templates.TemplateResponse(
-        "index.html",
+        "mirror.html",
         {
             "request": request,
-            "example_slug": "demo"
+            "event": event,
+            "anchor": anchor,
+            "asset": asset,
+            "budget": budget,
+            "bias": bias,
+            "orders": orders,
+            "summary": summary
         }
     )
 
