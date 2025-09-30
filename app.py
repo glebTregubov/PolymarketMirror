@@ -45,7 +45,12 @@ async def demo(
     """
     from polymarket_parser import Event, Market, StrikeMeta
     
-    anchor = await binance.get_btc_price() or 95000.0
+    if asset == "ETH":
+        anchor = await binance.get_eth_price() or 4000.0
+    elif asset == "SOL":
+        anchor = await binance.get_sol_price() or 200.0
+    else:
+        anchor = await binance.get_btc_price() or 95000.0
     
     demo_markets = [
         Market(
