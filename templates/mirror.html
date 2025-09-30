@@ -92,7 +92,7 @@
             </div>
             <div class="overflow-x-auto">
                 <!-- Upside Markets (Above Anchor) -->
-                {% set upside_markets = event.markets | selectattr('strike') | selectattr('strike.K', '>', anchor) | list | reverse %}
+                {% set upside_markets = event.markets | selectattr('strike') | selectattr('strike.K', '>', anchor) | sort(attribute='strike.K') | list %}
                 {% if upside_markets %}
                 <div class="border-b-2 border-gray-200">
                     <div class="px-6 py-2 bg-gray-50">
@@ -128,6 +128,10 @@
                                             Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
                                             <span class="text-green-600 ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
                                             <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
+                                        </div>
+                                        {% else %}
+                                        <div class="ml-3 px-2 py-1 invisible">
+                                            &nbsp;
                                         </div>
                                         {% endif %}
                                     </div>
@@ -186,6 +190,10 @@
                                             Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
                                             <span class="text-green-600 ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
                                             <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
+                                        </div>
+                                        {% else %}
+                                        <div class="ml-3 px-2 py-1 invisible">
+                                            &nbsp;
                                         </div>
                                         {% endif %}
                                     </div>
