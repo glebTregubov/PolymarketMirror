@@ -35,12 +35,9 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 35735
-externalPort = 3001
-
-[[ports]]
 localPort = 38829
 externalPort = 3000
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "autoscale"
+run = ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000", "--workers"]
