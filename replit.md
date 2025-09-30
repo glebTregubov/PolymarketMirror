@@ -30,6 +30,8 @@ This application is a delta-neutral strategy analysis tool for Polymarket ladder
 8. **Deployment optimization:** Added `/health` endpoint for fast health checks
 9. **Deployment optimization:** Implemented lazy loading for all external clients (Binance, Polymarket)
 10. **Deployment optimization:** Improved startup time by deferring client initialization until first use
+11. **UX improvement:** Zero-value placeholders now visible in Markets & Strikes table (shows "Yes 0¢ + No 0¢ = 0¢ Pnl 0¢ APY 0%" in gray for strikes without delta-neutral pairs)
+12. **Fixed:** Markets & Strikes table now properly sorted - upside markets ascending (closest to anchor first), downside markets descending (closest to anchor first)
 
 **Next Phase:**
 - Dynamic event parsing from /crypto page (replace hardcoded list)

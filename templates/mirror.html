@@ -130,8 +130,10 @@
                                             <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
                                         </div>
                                         {% else %}
-                                        <div class="ml-3 px-2 py-1 min-w-[280px]">
-                                            &nbsp;
+                                        <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-500 min-w-[280px]">
+                                            Yes 0¢ + No 0¢ = 0¢
+                                            <span class="ml-1">Pnl 0¢</span>
+                                            <span class="ml-1">APY 0%</span>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -154,7 +156,7 @@
                 </div>
 
                 <!-- Downside Markets (Below Anchor) -->
-                {% set downside_markets = event.markets | selectattr('strike') | selectattr('strike.K', '<=', anchor) | list %}
+                {% set downside_markets = event.markets | selectattr('strike') | selectattr('strike.K', '<=', anchor) | sort(attribute='strike.K', reverse=True) | list %}
                 {% if downside_markets %}
                 <div>
                     <div class="px-6 py-2 bg-gray-50">
@@ -192,8 +194,10 @@
                                             <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
                                         </div>
                                         {% else %}
-                                        <div class="ml-3 px-2 py-1 min-w-[280px]">
-                                            &nbsp;
+                                        <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-500 min-w-[280px]">
+                                            Yes 0¢ + No 0¢ = 0¢
+                                            <span class="ml-1">Pnl 0¢</span>
+                                            <span class="ml-1">APY 0%</span>
                                         </div>
                                         {% endif %}
                                     </div>
