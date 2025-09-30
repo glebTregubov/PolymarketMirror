@@ -124,14 +124,10 @@
                                             Buy No {{ "{:.0f}".format(market.no_price * 100) }}¢
                                         </button>
                                         {% if pair_info %}
-                                        <div class="ml-3 px-3 py-1.5 bg-gray-100 border-2 border-gray-400 rounded-md">
-                                            <div class="text-sm font-bold text-gray-900">
-                                                Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
-                                            </div>
-                                            <div class="mt-0.5">
-                                                <span class="text-green-600 font-bold text-xs">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
-                                                <span class="text-blue-600 font-bold text-xs ml-2">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
-                                            </div>
+                                        <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-600">
+                                            Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
+                                            <span class="text-green-600 ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
+                                            <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -186,14 +182,10 @@
                                             Buy No {{ "{:.0f}".format(market.no_price * 100) }}¢
                                         </button>
                                         {% if pair_info %}
-                                        <div class="ml-3 px-3 py-1.5 bg-gray-100 border-2 border-gray-400 rounded-md">
-                                            <div class="text-sm font-bold text-gray-900">
-                                                Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
-                                            </div>
-                                            <div class="mt-0.5">
-                                                <span class="text-green-600 font-bold text-xs">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
-                                                <span class="text-blue-600 font-bold text-xs ml-2">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
-                                            </div>
+                                        <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-600">
+                                            Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
+                                            <span class="text-green-600 ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
+                                            <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
                                         </div>
                                         {% endif %}
                                     </div>
