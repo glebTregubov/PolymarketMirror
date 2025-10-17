@@ -142,21 +142,21 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end space-x-2">
                                         <button class="w-28 px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm font-medium hover:bg-green-200">
-                                            Buy Yes {{ "{:.0f}".format(market.yes_price * 100) }}¢
+                                            Buy Yes {{ market.yes_price | cents }}¢
                                         </button>
                                         <button class="w-28 px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm font-medium hover:bg-red-200">
-                                            Buy No {{ "{:.0f}".format(market.no_price * 100) }}¢
+                                            Buy No {{ market.no_price | cents }}¢
                                         </button>
                                         {% if pair_info %}
                                         <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-600 min-w-[280px]">
-                                            Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
+                                            Yes {{ pair_info.yes_price | cents }}¢ + No {{ pair_info.no_price | cents }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
                                             <span class="text-green-600 ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
                                             <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
                                         </div>
                                         {% else %}
                                         <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-500 min-w-[280px]">
-                                            Yes 0¢ + No 0¢ = 0¢
-                                            <span class="ml-1">Pnl 0¢</span>
+                                            Yes {{ 0 | cents }}¢ + No {{ 0 | cents }}¢ = {{ 0 | cents }}¢
+                                            <span class="ml-1">Pnl {{ 0 | cents }}¢</span>
                                             <span class="ml-1">APY 0%</span>
                                         </div>
                                         {% endif %}
@@ -209,21 +209,21 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end space-x-2">
                                         <button class="w-28 px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm font-medium hover:bg-green-200">
-                                            Buy Yes {{ "{:.0f}".format(market.yes_price * 100) }}¢
+                                            Buy Yes {{ market.yes_price | cents }}¢
                                         </button>
                                         <button class="w-28 px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm font-medium hover:bg-red-200">
-                                            Buy No {{ "{:.0f}".format(market.no_price * 100) }}¢
+                                            Buy No {{ market.no_price | cents }}¢
                                         </button>
                                         {% if pair_info %}
                                         <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-600 min-w-[280px]">
-                                            Yes {{ "{:.0f}".format(pair_info.yes_price * 100) }}¢ + No {{ "{:.0f}".format(pair_info.no_price * 100) }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
+                                            Yes {{ pair_info.yes_price | cents }}¢ + No {{ pair_info.no_price | cents }}¢ = {{ "{:.0f}".format(pair_info.cost * 100) }}¢
                                             <span class="text-green-600 ml-1">Pnl {{ "{:.0f}".format(pair_info.pnl * 100) }}¢</span>
                                             <span class="text-blue-600 ml-1">APY {{ "{:.0f}".format(pair_info.apy) }}%</span>
                                         </div>
                                         {% else %}
                                         <div class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-gray-500 min-w-[280px]">
-                                            Yes 0¢ + No 0¢ = 0¢
-                                            <span class="ml-1">Pnl 0¢</span>
+                                            Yes {{ 0 | cents }}¢ + No {{ 0 | cents }}¢ = {{ 0 | cents }}¢
+                                            <span class="ml-1">Pnl {{ 0 | cents }}¢</span>
                                             <span class="ml-1">APY 0%</span>
                                         </div>
                                         {% endif %}
@@ -317,12 +317,14 @@
                                 </span>
                             </div>
                             <div class="flex items-center space-x-2">
+                                {% set no_strike = pair.no_strike | default(pair.strike, true) %}
+                                {% set yes_strike = pair.yes_strike | default(pair.partner_strike, true) %}
                                 <span class="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm font-medium">
-                                    No ${{ "{:,.0f}".format(pair.strike) }} {{ "{:.0f}".format(pair.no_price * 100) }}¢
+                                    No ${{ "{:,.0f}".format(no_strike) }} {{ pair.no_price | cents }}¢
                                 </span>
                                 <span class="text-gray-500 font-bold">+</span>
                                 <span class="px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm font-medium">
-                                    Yes ${{ "{:,.0f}".format(pair.partner_strike) }} {{ "{:.0f}".format(pair.yes_price * 100) }}¢
+                                    Yes ${{ "{:,.0f}".format(yes_strike) }} {{ pair.yes_price | cents }}¢
                                 </span>
                             </div>
                         </div>

@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Tuple, Any
 from datetime import datetime, timedelta, timezone
 import re
 import os
+from decimal import Decimal, ROUND_DOWN, InvalidOperation
 
 from binance_client import BinanceClient
 from polymarket_parser import PolymarketParser, Market, EventSummary
@@ -47,10 +48,25 @@ def split_markets_by_anchor(markets: List[Market], anchor: float) -> Tuple[List[
     return upside, downside
 
 
+def format_cents_no_round(price: Optional[float]) -> str:
+    """Convert price (0-1 range) to cents with one decimal place, truncating instead of rounding."""
+    if price is None:
+        return "0.0"
+
+    try:
+        cents = Decimal(str(price)) * Decimal("100")
+    except (InvalidOperation, ValueError):
+        return "0.0"
+
+    truncated = cents.quantize(Decimal("0.1"), rounding=ROUND_DOWN)
+    return format(truncated, "f")
+
+
 app = FastAPI(title="Polymarket Strategy Mirror")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["cents"] = format_cents_no_round
 
 _binance = None
 _polymarket = None
@@ -136,31 +152,44 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float, slug: st
         key=lambda m: m.strike.K
     )
     
+    total_markets = len(open_markets)
     for i, market in enumerate(open_markets):
         strike = market.strike.K
-        
-        # For all strikes: Buy NO at current + Buy YES at strike BELOW
-        if i > 0:
-            partner = open_markets[i - 1]  # Lower strike (below)
-            # Skip if partner is also resolved
-            if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
+        direction = 'downside' if strike <= anchor else 'upside'
+
+        if direction == 'downside':
+            if i == 0:
                 continue
-                
-            cost = market.no_price + partner.yes_price
-            pnl = 1.0 - cost
-            apy = calculate_apy(pnl, cost, days_to_expiry)
-            
-            direction = 'downside' if strike <= anchor else 'upside'
-            
-            pairs[strike] = {
-                'partner_strike': partner.strike.K,
-                'cost': cost,
-                'pnl': pnl,
-                'no_price': market.no_price,
-                'yes_price': partner.yes_price,
-                'direction': direction,
-                'apy': apy
-            }
+            partner = open_markets[i - 1]
+        else:
+            if i >= total_markets - 1:
+                continue
+            partner = open_markets[i + 1]
+
+        if not partner.strike:
+            continue
+
+        if partner.yes_price >= 0.99 or partner.no_price >= 0.99:
+            continue
+
+        yes_market = partner  # YES leg comes from adjacent strike in direction of the move
+        no_market = market    # NO leg always uses the current strike
+
+        cost = yes_market.yes_price + no_market.no_price
+        pnl = 1.0 - cost
+        apy = calculate_apy(pnl, cost, days_to_expiry)
+
+        pairs[strike] = {
+            'partner_strike': partner.strike.K,
+            'cost': cost,
+            'pnl': pnl,
+            'no_price': no_market.no_price,
+            'yes_price': yes_market.yes_price,
+            'direction': direction,
+            'apy': apy,
+            'no_strike': no_market.strike.K if no_market.strike else None,
+            'yes_strike': yes_market.strike.K if yes_market.strike else None,
+        }
     
     return pairs
 
