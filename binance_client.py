@@ -51,7 +51,11 @@ class BinanceClient:
     async def get_sol_price(self) -> Optional[float]:
         """Get SOL/USDT price"""
         return await self.get_spot_price("SOLUSDT")
-    
+
+    async def get_xrp_price(self) -> Optional[float]:
+        """Get XRP/USDT price"""
+        return await self.get_spot_price("XRPUSDT")
+
     async def close(self):
         """Close the HTTP client"""
         await self.client.aclose()

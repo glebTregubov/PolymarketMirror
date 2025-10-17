@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 from datetime import datetime, timedelta, timezone
 import re
 import os
@@ -293,19 +293,34 @@ async def demo(
 
 
 @app.get("/events", response_class=HTMLResponse)
-async def events_list(request: Request):
+async def events_list(request: Request, refresh: bool = Query(False)):
     """
     Display list of crypto ladder events available for analysis
     """
-    events = await get_polymarket().get_crypto_events(assets=["BTC", "ETH", "SOL"])
-    
-    return templates.TemplateResponse(
+    events = await get_polymarket().get_crypto_events(
+        assets=["BTC", "ETH", "SOL", "XRP"],
+        force_refresh=refresh
+    )
+
+    refresh_params: Dict[str, Any] = dict(request.query_params)
+    refresh_params["refresh"] = "true"
+
+    header_refresh = {
+        "action": request.url.path,
+        "method": "get",
+        "params": refresh_params
+    }
+
+    response = templates.TemplateResponse(
         "events.html",
         {
             "request": request,
-            "events": events
+            "events": events,
+            "header_refresh": header_refresh
         }
     )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/mirror", response_class=HTMLResponse)
@@ -315,12 +330,13 @@ async def mirror(
     budget: float = 1000.0,
     bias: float = 0.0,
     risk_cap: Optional[float] = None,
-    asset: str = "BTC"
+    asset: str = "BTC",
+    refresh: bool = Query(False)
 ):
     """
     Mirror page showing Polymarket event with strategy calculations
     """
-    event = await get_polymarket().parse_event_by_slug(slug)
+    event = await get_polymarket().parse_event_by_slug(slug, force_refresh=refresh)
     
     if not event:
         return templates.TemplateResponse(
@@ -337,6 +353,8 @@ async def mirror(
         anchor = await get_binance().get_eth_price()
     elif asset == "SOL":
         anchor = await get_binance().get_sol_price()
+    elif asset == "XRP":
+        anchor = await get_binance().get_xrp_price()
     else:
         anchor = 50000.0
     
@@ -386,6 +404,21 @@ async def mirror(
 
     upside_markets, downside_markets = split_markets_by_anchor(event.markets, anchor)
 
+    header_refresh = {
+        "action": request.url.path,
+        "method": "get",
+        "params": {
+            "slug": slug,
+            "asset": asset,
+            "budget": budget,
+            "bias": bias,
+            "refresh": "true"
+        }
+    }
+
+    if risk_cap is not None:
+        header_refresh["params"]["risk_cap"] = risk_cap
+
     response = templates.TemplateResponse(
         "mirror.html",
         {
@@ -403,7 +436,8 @@ async def mirror(
             "upside_markets": upside_markets,
             "downside_markets": downside_markets,
             "countdown": countdown,
-            "last_updated": last_updated
+            "last_updated": last_updated,
+            "header_refresh": header_refresh
         }
     )
 
@@ -449,6 +483,8 @@ async def calculate_strategy(
         anchor = await get_binance().get_eth_price()
     elif asset == "SOL":
         anchor = await get_binance().get_sol_price()
+    elif asset == "XRP":
+        anchor = await get_binance().get_xrp_price()
     else:
         anchor = 50000.0
     

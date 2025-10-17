@@ -17,6 +17,21 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <a href="/" class="text-gray-600 hover:text-gray-900">Home</a>
+                    {% if header_refresh %}
+                    <form method="{{ header_refresh.method | default('get') }}" action="{{ header_refresh.action }}" class="inline-flex items-center">
+                        {% for key, value in header_refresh.params.items() %}
+                        {% if value is not none %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                        {% endfor %}
+                        <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 1110.49-9.5" />
+                            </svg>
+                            Refresh Data
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

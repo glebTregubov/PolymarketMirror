@@ -13,3 +13,11 @@ dependencies = [
     "python-multipart>=0.0.20",
     "uvicorn>=0.37.0",
 ]
+
+[tool.setuptools]
+py-modules = [
+    "app",
+    "binance_client",
+    "polymarket_parser",
+    "strategy_engine",
+]
