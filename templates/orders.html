@@ -2,17 +2,6 @@
 
 <!-- Рабочий вариант с основными позициями -->
 
-{% import "_orders_macros.html" as orders_macros %}
-
 {% block content %}
-<div
-    id="orders-content"
-    class="w-full max-w-[1600px] space-y-4"
-    hx-get="{{ refresh_url }}"
-    hx-trigger="load, every 5s"
-    hx-target="#orders-content"
-    hx-swap="outerHTML"
->
-    {% include "orders_inner.html" %}
-</div>
+{% include "orders_inner.html" %}
 {% endblock %}

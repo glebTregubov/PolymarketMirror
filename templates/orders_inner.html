@@ -1,5 +1,13 @@
 {% import "_orders_macros.html" as orders_macros %}
 
+<div
+    id="orders-content"
+    class="w-full max-w-[1600px] space-y-4"
+    hx-get="{{ refresh_url }}"
+    hx-trigger="load, every 5s"
+    hx-target="#orders-content"
+    hx-swap="outerHTML"
+>
 <section class="bg-white shadow rounded-lg p-3">
         <dl class="grid gap-2 md:grid-cols-3 lg:grid-cols-7">
             <div class="bg-gray-50 rounded-md px-3 py-1">
@@ -133,7 +141,8 @@
 
                             {% for unit in units_up %}
                             {{ orders_macros.render_unit_rows(unit) }}
-                            {% endfor %}
+{% endfor %}
+</div>
 
                             {% if event.anchor_price %}
                             <tr class="bg-gray-200 font-semibold text-gray-800">
