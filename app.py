@@ -758,6 +758,7 @@ def _pair_positions_for_event(
             "position": pos,
             "remaining": size,
             "strike": strike,
+            "paired": False,
         }
         outcome = str(pos.get("outcome")).lower()
         if outcome == "yes":
@@ -773,61 +774,63 @@ def _pair_positions_for_event(
     units: List[Dict[str, Any]] = []
 
     for no_entry in no_entries:
-        while no_entry["remaining"] > 0:
-            candidate_index = None
-            for idx in range(len(yes_entries) - 1, -1, -1):
-                yes_entry = yes_entries[idx]
-                if yes_entry["remaining"] <= 0:
-                    continue
-                if yes_entry["strike"] is None:
-                    continue
-                if yes_entry["strike"] < no_entry["strike"]:
-                    candidate_index = idx
-                    break
+        no_size = no_entry["remaining"]
+        if no_size <= 0:
+            continue
 
-            if candidate_index is not None:
-                yes_entry = yes_entries[candidate_index]
-                paired_size = min(no_entry["remaining"], yes_entry["remaining"])
-                yes_segment = _position_segment(yes_entry["position"], paired_size)
-                yes_entry["remaining"] -= paired_size
-            else:
-                paired_size = no_entry["remaining"]
-                yes_segment = None
-
-            if paired_size <= 0:
+        candidate_index = None
+        for idx in range(len(yes_entries) - 1, -1, -1):
+            yes_entry = yes_entries[idx]
+            if yes_entry["remaining"] <= 0:
+                continue
+            if yes_entry["strike"] is None:
+                continue
+            if yes_entry["strike"] < no_entry["strike"]:
+                candidate_index = idx
                 break
 
-            no_segment = _position_segment(no_entry["position"], paired_size)
-            no_entry["remaining"] -= paired_size
+        yes_segment = None
+        if candidate_index is not None:
+            yes_entry = yes_entries[candidate_index]
+            yes_size = yes_entry["remaining"]
+            yes_segment = _position_segment(yes_entry["position"], yes_size)
+            yes_entry["remaining"] = 0.0
+            yes_entry["paired"] = True
+        else:
+            yes_entry = None
 
-            total_invested = (no_segment["cost"] if no_segment else 0.0) + (yes_segment["cost"] if yes_segment else 0.0)
-            total_current = (no_segment["current_value"] if no_segment else 0.0) + (yes_segment["current_value"] if yes_segment else 0.0)
-            current_pnl = total_current - total_invested
-            current_pnl_pct = (current_pnl / total_invested * 100.0) if total_invested > 0 else None
+        no_segment = _position_segment(no_entry["position"], no_size)
+        no_entry["remaining"] = 0.0
+        no_entry["paired"] = True
 
-            expiration_total = no_segment["size"] if no_segment else 0.0
+        total_invested = (no_segment["cost"] if no_segment else 0.0) + (yes_segment["cost"] if yes_segment else 0.0)
+        total_current = (no_segment["current_value"] if no_segment else 0.0) + (yes_segment["current_value"] if yes_segment else 0.0)
+        current_pnl = total_current - total_invested
+        current_pnl_pct = (current_pnl / total_invested * 100.0) if total_invested > 0 else None
+
+        expiration_total = no_segment["size"] if no_segment else 0.0
+        if yes_segment:
             expiration_profit = expiration_total - total_invested
-            expiration_profit_pct = (expiration_profit / total_invested * 100.0) if total_invested > 0 else None
+        else:
+            expiration_profit = expiration_total - total_invested
+        expiration_profit_pct = (expiration_profit / total_invested * 100.0) if total_invested > 0 else None
 
-            units.append({
-                "event_slug": event_slug,
-                "no": no_segment,
-                "yes": yes_segment,
-                "total_invested": total_invested,
-                "total_current_value": total_current,
-                "current_pnl": current_pnl,
-                "current_pnl_pct": current_pnl_pct,
-                "expiration_total": expiration_total,
-                "expiration_profit": expiration_profit,
-                "expiration_profit_pct": expiration_profit_pct,
-            })
-
-            if candidate_index is None:
-                break
+        units.append({
+            "event_slug": event_slug,
+            "no": no_segment,
+            "yes": yes_segment,
+            "total_invested": total_invested,
+            "total_current_value": total_current,
+            "current_pnl": current_pnl,
+            "current_pnl_pct": current_pnl_pct,
+            "expiration_total": expiration_total,
+            "expiration_profit": expiration_profit,
+            "expiration_profit_pct": expiration_profit_pct,
+        })
 
     for yes_entry in yes_entries:
         remaining_yes = yes_entry.get("remaining", 0.0)
-        if remaining_yes <= 0:
+        if remaining_yes <= 0 or yes_entry.get("paired"):
             continue
 
         yes_segment = _position_segment(yes_entry["position"], remaining_yes)
