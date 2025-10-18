@@ -3,7 +3,7 @@ import json
 import re
 import time
 from bs4 import BeautifulSoup
-from typing import List, Optional, Dict, Any, Callable
+from typing import List, Optional, Dict, Any, Callable, Tuple
 from dataclasses import dataclass, field
 
 
@@ -117,6 +117,8 @@ class EventSummary:
     asset: str  # BTC, ETH, SOL
     volume: Optional[str] = None
     num_markets: int = 0
+    markets_preview: Optional[List[Dict[str, float]]] = None
+    has_highlight: bool = False
 
 
 class PolymarketParser:
@@ -130,6 +132,8 @@ class PolymarketParser:
             }
         )
         self._build_id: Optional[str] = None
+        self._events_cache: Dict[Tuple[str, ...], tuple[float, List[EventSummary]]] = {}
+        self._events_cache_ttl = 300.0  # seconds
 
     def extract_strike_from_text(self, text: str) -> Optional[StrikeMeta]:
         """Extract numerical strike from market question text."""
@@ -309,6 +313,12 @@ class PolymarketParser:
         """Collect ladder-style crypto events across assets by scraping site search."""
         asset_filter = {asset.upper() for asset in assets} if assets else None
         summary_map: Dict[tuple, tuple[EventSummary, float]] = {}
+        cache_key = tuple(sorted(asset_filter)) if asset_filter else ("ALL",)
+
+        if not force_refresh:
+            cached = self._events_cache.get(cache_key)
+            if cached and (time.time() - cached[0]) < self._events_cache_ttl:
+                return cached[1]
 
         for code, config in ASSET_CONFIG.items():
             if asset_filter and code not in asset_filter:
@@ -319,18 +329,26 @@ class PolymarketParser:
             seen_slugs: set[str] = set()
             aggregated_results: List[Dict[str, Any]] = []
 
-            aggregated_results.extend(
-                await self._collect_series_events(
-                    config.get("series_slugs", []),
-                    force_refresh=force_refresh
-                )
+            search_terms = self._candidate_search_terms(
+                config.get("queries", []),
+                aliases
             )
 
-            if not aggregated_results:
-                for term in config["queries"]:
-                    base_params = {"query": term, "status": "active"}
+            for term in sorted(search_terms):
+                base_params = {"query": term, "status": "active"}
+                aggregated_results.extend(
+                    await self._fetch_search_results(
+                        base_params,
+                        force_refresh=force_refresh
+                    )
+                )
+                if "price" in term.lower():
+                    alt_params = {"_q": term, "_sort": "trending"}
                     aggregated_results.extend(
-                        await self._fetch_search_results(base_params, force_refresh=force_refresh)
+                        await self._fetch_search_results(
+                            alt_params,
+                            force_refresh=force_refresh
+                        )
                     )
 
             for item in aggregated_results:
@@ -352,6 +370,7 @@ class PolymarketParser:
                     asset=code,
                     volume=self._format_volume(volume_value),
                     num_markets=num_markets,
+                    markets_preview=self._build_markets_preview(item),
                 )
 
                 key = (code, slug)
@@ -369,7 +388,86 @@ class PolymarketParser:
             return (asset_rank, -volume_value, summary.title.lower())
 
         sorted_entries = sorted(summary_map.values(), key=sort_key)
-        return [entry[0] for entry in sorted_entries]
+        summaries = [entry[0] for entry in sorted_entries]
+        self._events_cache[cache_key] = (time.time(), summaries)
+        return summaries
+
+    def _candidate_search_terms(
+        self,
+        base_terms: Optional[List[str]],
+        aliases: List[str]
+    ) -> set[str]:
+        terms: set[str] = {
+            term.strip() for term in (base_terms or []) if term and term.strip()
+        }
+        normalized_aliases = [
+            alias.strip() for alias in aliases if alias and alias.strip()
+        ]
+        for alias_clean in normalized_aliases:
+            terms.add(alias_clean)
+            terms.add(f"{alias_clean} price")
+            terms.add(f"{alias_clean} price hit")
+
+        if normalized_aliases:
+            primary = normalized_aliases[0]
+            primary_lower = primary.lower()
+            for month in MONTH_KEYWORDS:
+                terms.add(f"{primary} price {month}")
+                terms.add(f"{primary_lower} price {month}")
+
+        return {term for term in terms if term}
+
+    def _build_markets_preview(
+        self,
+        item: Dict[str, Any]
+    ) -> Optional[List[Dict[str, float]]]:
+        raw_markets = item.get("markets") or []
+        if not isinstance(raw_markets, list):
+            return None
+
+        preview: List[Dict[str, float]] = []
+        for market in raw_markets:
+            if not isinstance(market, dict):
+                continue
+            outcome_prices = market.get("outcomePrices") or []
+            if not isinstance(outcome_prices, list) or len(outcome_prices) < 2:
+                continue
+
+            try:
+                yes_price = float(outcome_prices[0])
+                no_price = float(outcome_prices[1])
+            except (TypeError, ValueError):
+                continue
+
+            strike = None
+            text_candidates = [
+                market.get("question"),
+                market.get("groupItemTitle"),
+                market.get("slug"),
+                market.get("ticker"),
+                item.get("title"),
+                item.get("slug"),
+            ]
+            for text in text_candidates:
+                if not text:
+                    continue
+                strike_meta = self.extract_strike_from_text(str(text))
+                if strike_meta and strike_meta.K:
+                    strike = float(strike_meta.K)
+                    break
+
+            if strike is None:
+                continue
+
+            preview.append(
+                {
+                    "strike": strike,
+                    "yes_price": yes_price,
+                    "no_price": no_price,
+                }
+            )
+
+        return preview or None
 
 
     async def _fetch_search_results(
@@ -484,9 +582,12 @@ class PolymarketParser:
 
         texts = [
             item.get('title'),
+            item.get('question'),
+            item.get('name'),
             item.get('slug'),
             item.get('ticker'),
             item.get('seriesSlug'),
+            item.get('subtitle'),
         ]
 
         for text in texts:
@@ -513,9 +614,12 @@ class PolymarketParser:
 
         texts = [
             item.get('title') or '',
+            item.get('question') or '',
+            item.get('name') or '',
             (item.get('slug') or '').replace('-', ' '),
             (item.get('ticker') or '').replace('-', ' '),
             item.get('description') or '',
+            item.get('subtitle') or '',
         ]
 
         for text in texts:

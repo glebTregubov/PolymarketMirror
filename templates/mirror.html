@@ -111,7 +111,16 @@
                             {% set order_match = orders | selectattr('strike', 'equalto', market.strike.K) | list %}
                             {% set has_order = order_match | length > 0 %}
                             {% set pair_info = pairs.get(market.strike.K) %}
-                            <tr class="hover:bg-gray-50 {% if has_order %}bg-gray-100{% endif %}">
+                            {% set strike_value = market.strike.K if market.strike else None %}
+                            {% set is_highlight = strike_value is not none and strike_value in highlight_strikes %}
+                            {% set row_classes = "hover:bg-gray-50" %}
+                            {% if has_order and not is_highlight %}
+                                {% set row_classes = row_classes + " bg-gray-100" %}
+                            {% endif %}
+                            {% if is_highlight %}
+                                {% set row_classes = row_classes + " bg-amber-50 ring-2 ring-amber-300" %}
+                            {% endif %}
+                            <tr class="{{ row_classes }}">
                                 <td class="px-6 py-3 whitespace-nowrap w-24">
                                     <div class="flex items-center space-x-1">
                                         <span class="text-xs text-gray-500">↑</span>
@@ -135,9 +144,13 @@
                                         {% set no_units = 100 %}
                                         {% set yes_label = "YES $" ~ "{:,.0f}".format(pair_info.yes_strike if pair_info.yes_strike is not none else market.strike.K) %}
                                         {% set no_label = "NO $" ~ "{:,.0f}".format(pair_info.no_strike if pair_info.no_strike is not none else market.strike.K) %}
+                                        {% set scenario_classes = "ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-left text-gray-600 min-w-[280px] hover:border-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none transition" %}
+                                        {% if is_highlight %}
+                                            {% set scenario_classes = "ml-3 px-2 py-1 bg-amber-100 border border-amber-400 rounded text-xs text-left text-amber-800 min-w-[280px] hover:border-amber-500 focus:ring-2 focus:ring-amber-400 focus:outline-none transition" %}
+                                        {% endif %}
                                         <button
                                             type="button"
-                                            class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-left text-gray-600 min-w-[280px] hover:border-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+                                            class="{{ scenario_classes }}"
                                             data-scenario="true"
                                             data-anchor="{{ anchor }}"
                                             data-asset="{{ asset }}"
@@ -203,7 +216,16 @@
                             {% set order_match = orders | selectattr('strike', 'equalto', market.strike.K) | list %}
                             {% set has_order = order_match | length > 0 %}
                             {% set pair_info = pairs.get(market.strike.K) %}
-                            <tr class="hover:bg-gray-50 {% if has_order %}bg-gray-100{% endif %}">
+                            {% set strike_value = market.strike.K if market.strike else None %}
+                            {% set is_highlight = strike_value is not none and strike_value in highlight_strikes %}
+                            {% set row_classes = "hover:bg-gray-50" %}
+                            {% if has_order and not is_highlight %}
+                                {% set row_classes = row_classes + " bg-gray-100" %}
+                            {% endif %}
+                            {% if is_highlight %}
+                                {% set row_classes = row_classes + " bg-amber-50 ring-2 ring-amber-300" %}
+                            {% endif %}
+                            <tr class="{{ row_classes }}">
                                 <td class="px-6 py-3 whitespace-nowrap w-24">
                                     <div class="flex items-center space-x-1">
                                         <span class="text-xs text-gray-500">↓</span>
@@ -227,9 +249,13 @@
                                         {% set no_units = 100 %}
                                         {% set yes_label = "YES $" ~ "{:,.0f}".format(pair_info.yes_strike if pair_info.yes_strike is not none else market.strike.K) %}
                                         {% set no_label = "NO $" ~ "{:,.0f}".format(pair_info.no_strike if pair_info.no_strike is not none else market.strike.K) %}
+                                        {% set scenario_classes = "ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-left text-gray-600 min-w-[280px] hover:border-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none transition" %}
+                                        {% if is_highlight %}
+                                            {% set scenario_classes = "ml-3 px-2 py-1 bg-amber-100 border border-amber-400 rounded text-xs text-left text-amber-800 min-w-[280px] hover:border-amber-500 focus:ring-2 focus:ring-amber-400 focus:outline-none transition" %}
+                                        {% endif %}
                                         <button
                                             type="button"
-                                            class="ml-3 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs text-left text-gray-600 min-w-[280px] hover:border-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+                                            class="{{ scenario_classes }}"
                                             data-scenario="true"
                                             data-anchor="{{ anchor }}"
                                             data-asset="{{ asset }}"

@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import Optional, List, Dict, Tuple, Any, Set
 from datetime import datetime, timedelta, timezone
+import time
 import math
 import re
 import os
@@ -15,7 +16,7 @@ import httpx
 from pydantic import BaseModel
 
 from binance_client import BinanceClient
-from polymarket_parser import PolymarketParser, Market, EventSummary
+from polymarket_parser import PolymarketParser, Market, EventSummary, StrikeMeta
 from strategy_engine import StrategyEngine
 from polymarket_orders import PolymarketOrdersClient
 
@@ -157,6 +158,10 @@ _binance = None
 _polymarket = None
 _orders_client = None
 _engine = None
+_event_highlight_cache: Dict[str, Tuple[float, bool]] = {}
+EVENT_HIGHLIGHT_TTL = 300.0
+_events_page_cache: Optional[Dict[str, Any]] = None
+EVENTS_PAGE_TTL = 1200.0
 
 DEFAULT_POLYMARKET_ADDRESSES: List[str] = [
     os.getenv("POLYMARKET_PRIMARY_ADDRESS", "0x7a6603ba85992b6fa88ac8000a3f2169d2a45b1b"),
@@ -291,6 +296,136 @@ def calculate_delta_neutral_pairs(markets: List[Market], anchor: float, slug: st
         }
     
     return pairs
+
+
+def identify_highlight_strikes(
+    markets: List[Market],
+    pairs: Dict[float, Dict[str, Any]],
+    anchor: float,
+    min_pnl_cents: float = 10.0
+) -> Set[float]:
+    """
+    Select strikes whose paired units have pnl >= min_pnl_cents while being at least
+    one strike removed from the anchor on their respective side.
+    """
+    highlights: Set[float] = set()
+    if not markets or not pairs:
+        return highlights
+
+    threshold = max(0.0, min_pnl_cents / 100.0)
+
+    upside_markets = [
+        market for market in markets
+        if market.strike and market.strike.K is not None and market.strike.K > anchor
+    ]
+    upside_markets.sort(key=lambda market: market.strike.K - anchor)
+
+    downside_markets = [
+        market for market in markets
+        if market.strike and market.strike.K is not None and market.strike.K < anchor
+    ]
+    downside_markets.sort(key=lambda market: anchor - market.strike.K)
+
+    def evaluate(candidates: List[Market]) -> None:
+        for idx, market in enumerate(candidates):
+            if idx == 0:
+                continue  # Skip the strike adjacent to anchor
+            strike = market.strike.K
+            pair = pairs.get(strike)
+            if not pair:
+                continue
+            pnl = pair.get("pnl")
+            if pnl is None or pnl < threshold:
+                continue
+            highlights.add(strike)
+
+    evaluate(upside_markets)
+    evaluate(downside_markets)
+
+    return highlights
+
+
+def _build_markets_from_preview(
+    preview: Optional[List[Dict[str, float]]]
+) -> List[Market]:
+    if not preview:
+        return []
+
+    markets: List[Market] = []
+    for entry in preview:
+        if not isinstance(entry, dict):
+            continue
+        strike = entry.get("strike")
+        yes_price = entry.get("yes_price")
+        no_price = entry.get("no_price")
+        try:
+            strike_val = float(strike)
+            yes_val = float(yes_price)
+            no_val = float(no_price)
+        except (TypeError, ValueError):
+            continue
+        if strike_val <= 0:
+            continue
+        strike_meta = StrikeMeta(raw=f"${strike_val:,.0f}", K=strike_val, unit="USD")
+        markets.append(
+            Market(
+                id=str(strike_val),
+                question=f"Strike ${strike_val:,.0f}",
+                outcome_type="binary",
+                strike=strike_meta,
+                yes_price=yes_val,
+                no_price=no_val,
+                spread=0.02,
+            )
+        )
+
+    return markets
+
+
+def _evaluate_highlight_from_preview(
+    slug: str,
+    anchor: Optional[float],
+    preview: Optional[List[Dict[str, float]]],
+) -> bool:
+    if not slug or anchor is None or anchor <= 0:
+        return False
+
+    now = time.time()
+    cached = _event_highlight_cache.get(slug)
+    if cached and (now - cached[0]) < EVENT_HIGHLIGHT_TTL:
+        return cached[1]
+
+    markets = _build_markets_from_preview(preview)
+    if not markets:
+        result = False
+    else:
+        pairs = calculate_delta_neutral_pairs(markets, anchor, slug)
+        highlights = identify_highlight_strikes(markets, pairs, anchor)
+        result = bool(highlights)
+
+    _event_highlight_cache[slug] = (now, result)
+    return result
+
+
+async def _fetch_anchor_price(asset_code: str) -> Optional[float]:
+    asset_upper = (asset_code or "").upper()
+    price: Optional[float]
+
+    if asset_upper == "BTC":
+        price = await get_binance().get_btc_price()
+    elif asset_upper == "ETH":
+        price = await get_binance().get_eth_price()
+    elif asset_upper == "SOL":
+        price = await get_binance().get_sol_price()
+    elif asset_upper == "XRP":
+        price = await get_binance().get_xrp_price()
+    else:
+        price = None
+
+    try:
+        return float(price) if price is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def simulate_pair_scenario(request: ScenarioRequest) -> Dict[str, Any]:
@@ -483,10 +618,51 @@ async def events_list(request: Request, refresh: bool = Query(False)):
     """
     Display list of crypto ladder events available for analysis
     """
-    events = await get_polymarket().get_crypto_events(
-        assets=["BTC", "ETH", "SOL", "XRP"],
-        force_refresh=refresh
-    )
+    global _events_page_cache
+
+    now = time.time()
+    events_data: Optional[List[EventSummary]] = None
+    force_flag = str(request.query_params.get("force", "")).lower()
+    force_refresh_requested = refresh and force_flag in {"1", "true", "force"}
+
+    if _events_page_cache:
+        age = now - _events_page_cache.get("timestamp", 0.0)
+        if age < EVENTS_PAGE_TTL:
+            events_data = _events_page_cache.get("events")
+
+    if events_data is not None and force_refresh_requested:
+        events_data = None
+
+    if events_data is None:
+        events_data = await get_polymarket().get_crypto_events(
+            assets=["BTC", "ETH", "SOL", "XRP"],
+            force_refresh=True
+        )
+        _events_page_cache = {
+            "timestamp": now,
+            "events": events_data,
+        }
+
+    events = events_data or []
+
+    anchors: Dict[str, Optional[float]] = {}
+    assets_present = {event.asset for event in events if event.asset}
+    for asset_code in assets_present:
+        anchors[asset_code] = await _fetch_anchor_price(asset_code)
+
+    for event_summary in events:
+        preview = getattr(event_summary, "markets_preview", None)
+        anchor_value = anchors.get(event_summary.asset)
+        if preview and anchor_value:
+            event_summary.has_highlight = bool(
+                _evaluate_highlight_from_preview(
+                    event_summary.slug,
+                    anchor_value,
+                    preview,
+                )
+            )
+        else:
+            event_summary.has_highlight = False
 
     refresh_params: Dict[str, Any] = dict(request.query_params)
     refresh_params["refresh"] = "true"
@@ -1254,6 +1430,7 @@ async def mirror(
     )
     
     pairs = calculate_delta_neutral_pairs(event.markets, anchor, slug)
+    highlight_strikes = identify_highlight_strikes(event.markets, pairs, anchor)
 
     resolve_time_str = event.resolve_time
     if not resolve_time_str:
@@ -1317,6 +1494,7 @@ async def mirror(
             "orders": orders,
             "summary": summary,
             "pairs": pairs,
+            "highlight_strikes": highlight_strikes,
             "upside_markets": upside_markets,
             "downside_markets": downside_markets,
             "countdown": countdown,

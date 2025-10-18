@@ -3,61 +3,76 @@
 {% block title %}Select Crypto Event - Polymarket Strategy Mirror{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto py-8 px-4">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Select Crypto Event</h1>
-        <p class="text-gray-600">Choose a ladder event to analyze delta-neutral trading strategies</p>
+<div class="w-full py-8 pl-4 pr-8">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-1">Select Crypto Event</h1>
+        <p class="text-gray-600 text-sm">Choose a ladder event to analyze delta-neutral trading strategies</p>
     </div>
 
     {% if events %}
-    <!-- Group events by asset -->
-    {% set btc_events = events | selectattr('asset', 'equalto', 'BTC') | list %}
-    {% set eth_events = events | selectattr('asset', 'equalto', 'ETH') | list %}
-    {% set sol_events = events | selectattr('asset', 'equalto', 'SOL') | list %}
-
-    {% for asset, asset_events, logo_path in [
-        ('Bitcoin', btc_events, '/images/logos/btc.png'),
-        ('Ethereum', eth_events, '/images/logos/eth.png'),
-        ('Solana', sol_events, '/images/logos/sol.png')
+    {% set asset_configs = [
+        ('BTC', 'Bitcoin', '/images/logos/btc.png'),
+        ('ETH', 'Ethereum', '/images/logos/eth.png'),
+        ('SOL', 'Solana', '/images/logos/sol.png'),
+        ('XRP', 'XRP', '/images/logos/xrp.png')
     ] %}
-    {% if asset_events %}
-    <div class="mb-8">
-        <div class="flex items-center space-x-3 mb-4">
-            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <span class="text-lg font-bold">{{ asset[0] }}</span>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-900">{{ asset }}</h2>
-            <span class="text-sm text-gray-500">({{ asset_events | length }} events)</span>
-        </div>
 
-        <div class="grid gap-4">
-            {% for event in asset_events %}
-            <a href="/mirror?slug={{ event.slug }}&asset={{ event.asset }}" 
-               class="block bg-white shadow rounded-lg p-6 hover:shadow-lg transition-shadow border border-gray-200 hover:border-blue-400">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ event.title }}</h3>
-                        <div class="flex items-center space-x-4 text-sm text-gray-500">
-                            {% if event.num_markets > 0 %}
-                            <span>{{ event.num_markets }} markets</span>
-                            {% endif %}
-                            {% if event.volume %}
-                            <span>{{ event.volume }} volume</span>
-                            {% endif %}
-                        </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {% for code, asset_name, logo_path in asset_configs %}
+        {% set asset_events = events | selectattr('asset', 'equalto', code) | list %}
+        <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col min-w-[260px]">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-700">
+                        {{ asset_name[0] }}
                     </div>
-                    <div class="ml-4">
-                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h2 class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ asset_name }}</h2>
+                </div>
+                <span class="text-xs text-gray-500 whitespace-nowrap">{{ asset_events | length }} events</span>
+            </div>
+            <div class="flex-1 space-y-2.5">
+                {% if asset_events %}
+                {% for event in asset_events %}
+                {% set link_classes = "block border border-gray-200 rounded-md px-3 py-2 hover:border-blue-400 hover:bg-blue-50 transition-colors" %}
+                {% if event.has_highlight %}
+                    {% set link_classes = "block border border-amber-400 rounded-md px-3 py-2 bg-amber-50/60 hover:border-amber-500 hover:bg-amber-100 transition-colors" %}
+                {% endif %}
+                <a href="/mirror?slug={{ event.slug }}&asset={{ event.asset }}"
+                   class="{{ link_classes }}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2">
+                                <h3 class="text-sm font-semibold text-gray-900 leading-tight truncate" title="{{ event.title }}">{{ event.title }}</h3>
+                                {% if event.has_highlight %}
+                                <span class="px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full bg-amber-200 text-amber-900 whitespace-nowrap">
+                                    PnL ≥ 10¢
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                                {% if event.num_markets > 0 %}
+                                <span>{{ event.num_markets }} markets</span>
+                                {% endif %}
+                                {% if event.volume %}
+                                <span>{{ event.volume }} volume</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </div>
+                </a>
+                {% endfor %}
+                {% else %}
+                <div class="border border-dashed border-gray-200 rounded-md px-3 py-2 text-xs text-gray-500">
+                    No events available right now.
                 </div>
-            </a>
-            {% endfor %}
+                {% endif %}
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endif %}
-    {% endfor %}
 
     {% else %}
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
