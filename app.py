@@ -1024,6 +1024,7 @@ async def orders_page(
     request: Request,
     addresses: Optional[List[str]] = Query(None),
     limit: int = Query(25, ge=1, le=200),
+    partial: bool = Query(False),
 ) -> HTMLResponse:
     """
     Display Polymarket stake information for configured addresses.
@@ -1185,18 +1186,20 @@ async def orders_page(
         "params": refresh_params,
     }
 
-    response = templates.TemplateResponse(
-        "orders.html",
-        {
-            "request": request,
-            "addresses": target_addresses,
-            "address_payloads": address_payloads,
-            "aggregate_summary": aggregate_summary,
-            "limit": limit,
-            "last_updated": datetime.now(timezone.utc),
-            "header_refresh": header_refresh,
-        },
-    )
+    context = {
+        "request": request,
+        "addresses": target_addresses,
+        "address_payloads": address_payloads,
+        "aggregate_summary": aggregate_summary,
+        "limit": limit,
+        "last_updated": datetime.now(timezone.utc),
+        "header_refresh": header_refresh,
+        "refresh_url": str(request.url.include_query_params(partial="true")),
+    }
+
+    template_name = "orders_inner.html" if partial else "orders.html"
+
+    response = templates.TemplateResponse(template_name, context)
     response.headers["Cache-Control"] = "no-store"
     return response
 

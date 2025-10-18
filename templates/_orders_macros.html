@@ -1,0 +1,112 @@
+{% macro render_unit_rows(unit) %}
+    {% set yes = unit.yes %}
+    {% set no = unit.no %}
+    {% set has_yes = yes is not none %}
+    {% set has_no = no is not none %}
+    {% set row_color = 'bg-purple-50' if unit.direction == 'upside' else ('bg-green-50' if unit.direction == 'downside' else 'bg-gray-50') %}
+    <tr>
+        <td colspan="13" class="py-1">
+            <div class="border-t border-gray-700 border-dashed"></div>
+        </td>
+    </tr>
+    <tr class="{{ row_color }} text-gray-800">
+        <td class="px-3 py-1 font-medium text-gray-700">
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                    No {{ no.strike | round(0) if has_no and no.strike is not none else '—' }}
+                </span>
+            </div>
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_no %}${{ '{:.3f}'.format(no.avg_price) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_no %}{{ no.size | round(0) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_no %}${{ '{:,.2f}'.format(no.cost) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_no %}${{ '{:.3f}'.format(no.cur_price) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_no %}${{ '{:,.2f}'.format(no.current_value) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_no %}${{ '{:,.2f}'.format(no.size) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+    </tr>
+    <tr class="{{ row_color }} text-gray-800 border-t border-gray-200">
+        <td class="px-3 py-1 font-medium text-gray-700">
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                    Yes {{ yes.strike | round(0) if has_yes and yes.strike is not none else '—' }}
+                </span>
+            </div>
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_yes %}${{ '{:.3f}'.format(yes.avg_price) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_yes %}{{ yes.size | round(0) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_yes %}${{ '{:,.2f}'.format(yes.cost) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_yes %}${{ '{:.3f}'.format(yes.cur_price) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_yes %}${{ '{:,.2f}'.format(yes.current_value) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">
+            {% if has_yes %}${{ '{:,.2f}'.format(-yes.cost) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+        <td class="px-3 py-1 text-right border-l border-gray-200">—</td>
+    </tr>
+    <tr class="{{ row_color }} text-gray-900 border-t border-gray-300 font-semibold">
+        <td class="px-3 py-0.5 text-right">Итого</td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200"></td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200"></td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200"></td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            ${{ '{:,.2f}'.format(unit.total_invested) }}
+        </td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200"></td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200"></td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            ${{ '{:,.2f}'.format(unit.total_current_value) }}
+        </td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            ${{ '{:,.2f}'.format(unit.current_pnl) }}
+        </td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            {% if unit.current_pnl_pct is not none %}{{ '{:+.2f}%'.format(unit.current_pnl_pct) }}{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            ${{ '{:,.2f}'.format(unit.expiration_total) }}
+        </td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            ${{ '{:,.2f}'.format(unit.expiration_profit) }}
+        </td>
+        <td class="px-3 py-0.5 text-right border-l border-gray-200">
+            {% if unit.expiration_profit_pct is not none %}{{ '{:+.2f}%'.format(unit.expiration_profit_pct) }}{% else %}—{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="13" class="py-1">
+            <div class="border-t border-gray-700 border-dashed"></div>
+        </td>
+    </tr>
+{% endmacro %}

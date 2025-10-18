@@ -1,0 +1,339 @@
+{% import "_orders_macros.html" as orders_macros %}
+
+<section class="bg-white shadow rounded-lg p-3">
+        <dl class="grid gap-2 md:grid-cols-3 lg:grid-cols-7">
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Total Contracts</dt>
+                <dd class="mt-1 text-xl font-semibold text-gray-900">{{ aggregate_summary.total_size | round(2) }}</dd>
+            </div>
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Initial Value</dt>
+                <dd class="mt-1 text-xl font-semibold text-gray-900">${{ '{:,.2f}'.format(aggregate_summary.total_initial) }}</dd>
+            </div>
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Current Value</dt>
+                <dd class="mt-1 text-xl font-semibold text-gray-900">${{ '{:,.2f}'.format(aggregate_summary.total_current) }}</dd>
+            </div>
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Cash Balance</dt>
+                <dd class="mt-1 text-xl font-semibold text-gray-900">${{ '{:,.2f}'.format(aggregate_summary.cash_balance) }}</dd>
+            </div>
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Portfolio Value</dt>
+                <dd class="mt-1 text-xl font-semibold text-gray-900">${{ '{:,.2f}'.format(aggregate_summary.portfolio_value) }}</dd>
+            </div>
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Cash PnL</dt>
+                <dd class="mt-1 text-xl font-semibold {% if aggregate_summary.total_cash_pnl >= 0 %}text-green-600{% else %}text-red-600{% endif %}">${{ '{:,.2f}'.format(aggregate_summary.total_cash_pnl) }}</dd>
+            </div>
+            <div class="bg-gray-50 rounded-md px-3 py-1">
+                <dt class="text-sm text-gray-500">Paired Units</dt>
+                <dd class="mt-1 text-xl font-semibold text-gray-900">{{ aggregate_summary.num_units }}</dd>
+            </div>
+        </dl>
+    </section>
+
+{% if not address_payloads %}
+<div class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md p-3">
+        No wallet addresses configured. Provide at least one via environment variables or the <code>addresses</code> query parameter.
+    </div>
+    {% endif %}
+
+    {% for payload in address_payloads %}
+    <section class="bg-white shadow rounded-lg">
+        <div class="border-b border-gray-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900">Wallet</h3>
+                <p class="font-mono text-sm text-gray-700">{{ payload.address }}</p>
+            </div>
+            {% if payload.summary %}
+            <dl class="grid grid-cols-2 gap-2 mt-2 sm:mt-0 sm:grid-cols-7 sm:gap-3">
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Contracts</dt>
+                    <dd class="text-base font-semibold text-gray-900">{{ payload.summary.total_size | round(2) }}</dd>
+                </div>
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Initial</dt>
+                    <dd class="text-base font-semibold text-gray-900">${{ '{:,.2f}'.format(payload.summary.total_initial) }}</dd>
+                </div>
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Current</dt>
+                    <dd class="text-base font-semibold text-gray-900">${{ '{:,.2f}'.format(payload.summary.total_current) }}</dd>
+                </div>
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Cash</dt>
+                    <dd class="text-base font-semibold text-gray-900">${{ '{:,.2f}'.format(payload.summary.cash_balance) }}</dd>
+                </div>
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Portfolio</dt>
+                    <dd class="text-base font-semibold text-gray-900">${{ '{:,.2f}'.format(payload.summary.portfolio_value) }}</dd>
+                </div>
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Cash PnL</dt>
+                    <dd class="text-base font-semibold {% if payload.summary.total_cash_pnl >= 0 %}text-green-600{% else %}text-red-600{% endif %}">${{ '{:,.2f}'.format(payload.summary.total_cash_pnl) }}</dd>
+                </div>
+                <div class="px-2 py-0.5 bg-gray-50 rounded">
+                    <dt class="text-xs text-gray-500 uppercase tracking-wide">Units</dt>
+                    <dd class="text-base font-semibold text-gray-900">{{ payload.summary.num_units }}</dd>
+                </div>
+            </dl>
+            {% if payload.filtered_expired %}
+            <p class="mt-2 text-xs text-gray-500">
+                Filtered {{ payload.filtered_expired }} expired position{{ 's' if payload.filtered_expired != 1 else '' }} past their end date.
+            </p>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        {% if payload.event_tables %}
+        <div class="px-3 py-2 border-b border-gray-200 bg-gray-50 space-y-4">
+            {% for event in payload.event_tables %}
+            <div class="border border-gray-200 rounded-lg bg-white shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between px-3 py-1.5 bg-gray-100 border-b border-gray-200">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800">{{ event.event_label }}</h4>
+                        <p class="text-xs text-gray-500">{{ event.event_slug }}</p>
+                    </div>
+                    <div class="mt-2 md:mt-0 text-sm text-gray-600">
+                        {% if event.anchor_price %}
+                        Сейчас: <span class="font-semibold text-gray-900">${{ '{:,.2f}'.format(event.anchor_price) }}</span>
+                        {% else %}
+                        Сейчас: —
+                        {% endif %}
+                    </div>
+                </div>
+                {% if event.units %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-800 text-xs uppercase tracking-wide text-white">
+                            <tr>
+                                <th rowspan="2" class="px-3 py-1 text-left align-bottom">Условие цены</th>
+                                <th colspan="3" class="px-3 py-1 text-center border-l border-gray-700">Открытие</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">Инвестиция</th>
+                                <th colspan="2" class="px-3 py-1 text-center border-l border-gray-700">Текущая</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">Текущий счёт</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">PNL</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">PNL %</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">При экспирации</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">Прибыль эксп.</th>
+                                <th rowspan="2" class="px-3 py-1 text-right border-l border-gray-700">Профит %</th>
+                            </tr>
+                            <tr>
+                                <th class="px-3 py-1 text-right border-l border-gray-700">Стоимость</th>
+                                <th class="px-3 py-1 text-right border-l border-gray-700">Кол-во</th>
+                                <th class="px-3 py-1 text-right border-l border-gray-700">Сумма</th>
+                                <th class="px-3 py-1 text-right border-l border-gray-700">Цена</th>
+                                <th class="px-3 py-1 text-right border-l border-gray-700">Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% set units_up = event.units | selectattr('direction', 'equalto', 'upside') | list %}
+                            {% set units_down = event.units | selectattr('direction', 'equalto', 'downside') | list %}
+                            {% set units_neutral = event.units | selectattr('direction', 'equalto', None) | list %}
+
+                            {% for unit in units_up %}
+                            {{ orders_macros.render_unit_rows(unit) }}
+                            {% endfor %}
+
+                            {% if event.anchor_price %}
+                            <tr class="bg-gray-200 font-semibold text-gray-800">
+                                <td class="px-3 py-2">Сейчас</td>
+                                <td colspan="12" class="px-3 py-2 text-right">${{ '{:,.2f}'.format(event.anchor_price) }}</td>
+                            </tr>
+                            {% endif %}
+
+                            {% for unit in units_down %}
+                            {{ orders_macros.render_unit_rows(unit) }}
+                            {% endfor %}
+
+                            {% for unit in units_neutral %}
+                            {{ orders_macros.render_unit_rows(unit) }}
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-gray-100 text-sm font-semibold text-gray-800">
+                            <tr>
+                                <td class="px-3 py-2 text-left">Итого</td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200"></td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200"></td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200"></td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    ${{ '{:,.2f}'.format(event.summary.total_invested) }}
+                                </td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200"></td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200"></td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    ${{ '{:,.2f}'.format(event.summary.total_current_value) }}
+                                </td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    ${{ '{:,.2f}'.format(event.summary.total_cash_pnl) }}
+                                </td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    {% if event.summary.current_pnl_pct is not none %}{{ '{:+.2f}%'.format(event.summary.current_pnl_pct) }}{% else %}—{% endif %}
+                                </td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    ${{ '{:,.2f}'.format(event.summary.expiration_total) }}
+                                </td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    ${{ '{:,.2f}'.format(event.summary.expiration_profit) }}
+                                </td>
+                                <td class="px-3 py-2 text-right border-l border-gray-200">
+                                    {% if event.summary.expiration_profit_pct is not none %}{{ '{:+.2f}%'.format(event.summary.expiration_profit_pct) }}{% else %}—{% endif %}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <div class="px-4 py-3 text-sm text-gray-600">
+                    Нет собранных юнитов для этого события — позиции не образуют связки YES/NO.
+                </div>
+                {% endif %}
+                {% if event.leftovers %}
+                <div class="px-4 py-2 bg-yellow-50 border-t border-yellow-200 text-xs text-yellow-800">
+                    Непарные позиции:
+                    {% for leftover in event.leftovers %}
+                    <span class="inline-flex items-center mr-3">
+                        {{ leftover.outcome if leftover.outcome else '?' }}
+                        {% if leftover.strike %}
+                        @ {{ leftover.strike | round(0) }}
+                        {% endif %}
+                        ({{ leftover.size | round(2) }})
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+{% if payload.error %}
+        <div class="px-3 py-2">
+            <div class="bg-red-50 border border-red-200 text-red-800 rounded-md p-3">
+                Unable to load data for this address: {{ payload.error }}
+            </div>
+        </div>
+        {% else %}
+    <div class="px-3 py-3 space-y-4">
+            <div>
+                <h4 class="text-md font-semibold text-gray-900 mb-3">Open Positions</h4>
+                {% if payload.positions %}
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr class="text-xs font-medium text-gray-500 uppercase tracking-wide text-left">
+                                <th class="px-4 py-3">Market</th>
+                                <th class="px-4 py-3 text-right">Avg → Now</th>
+                                <th class="px-4 py-3 text-right">Bet</th>
+                                <th class="px-4 py-3 text-right">To Win</th>
+                                <th class="px-4 py-3 text-right">Value</th>
+                                <th class="px-4 py-3 text-right">End Date</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for position in payload.positions %}
+                            {% set outcome_lower = position.outcome | lower %}
+                            {% set badge_classes = 'bg-green-100 text-green-700' if outcome_lower == 'yes' else 'bg-red-100 text-red-700' %}
+                            <tr class="text-sm text-gray-700">
+                                <td class="px-4 py-2">
+                                    <div class="flex items-center space-x-2">
+                                        {% if position.icon %}
+                                        <img src="{{ position.icon }}" alt="" class="w-6 h-6 rounded-full">
+                                        {% endif %}
+                                        <div>
+                                            <div class="font-medium text-gray-900">{{ position.title }}</div>
+                                            <div class="flex items-center space-x-2 text-xs text-gray-500">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-semibold {{ badge_classes }} uppercase tracking-wide">{{ position.outcome }}</span>
+                                                <span>{{ position.size | round(2) }} shares</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    {{ position.avg_price_cents | round(1) }}¢ → {{ position.cur_price_cents | round(1) }}¢
+                                </td>
+                                <td class="px-4 py-2 text-right">${{ '{:,.2f}'.format(position.bet_amount) }}</td>
+                                <td class="px-4 py-2 text-right">${{ '{:,.2f}'.format(position.to_win) }}</td>
+                                <td class="px-4 py-2 text-right">
+                                    <div class="font-medium text-gray-900">${{ '{:,.2f}'.format(position.current_value) }}</div>
+                                    <div class="text-xs {% if position.cash_pnl >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                        {% if position.cash_pnl >= 0 %}+{% endif %}${{ '{:,.2f}'.format(position.cash_pnl) }}
+                                        {% if position.percent_pnl is not none %}
+                                        ({{ '{:+.2f}%'.format(position.percent_pnl) }})
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-500">{{ position.end_date or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">No active positions detected.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h4 class="text-md font-semibold text-gray-900 mb-3">Latest Trades</h4>
+                {% if payload.trades %}
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr class="text-xs font-medium text-gray-500 uppercase tracking-wide text-left">
+                                <th class="px-4 py-3">Market</th>
+                                <th class="px-4 py-3">Outcome</th>
+                                <th class="px-4 py-3">Side</th>
+                                <th class="px-4 py-3 text-right">Size</th>
+                                <th class="px-4 py-3 text-right">Price</th>
+                                <th class="px-4 py-3 text-right">Value</th>
+                                <th class="px-4 py-3">Timestamp</th>
+                                <th class="px-4 py-3">Tx</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for trade in payload.trades %}
+                            <tr class="text-sm text-gray-700">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center space-x-2">
+                                        {% if trade.icon %}
+                                        <img src="{{ trade.icon }}" alt="" class="w-6 h-6 rounded-full">
+                                        {% endif %}
+                                        <div>
+                                            <div class="font-medium text-gray-900">{{ trade.title }}</div>
+                                            {% if trade.slug %}
+                                            <div class="text-xs text-gray-500">{{ trade.slug }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">{{ trade.outcome }}</td>
+                                <td class="px-4 py-3 font-semibold {% if trade.side == 'BUY' %}text-blue-600{% else %}text-orange-600{% endif %}">
+                                    {{ trade.side }}
+                                </td>
+                                <td class="px-4 py-3 text-right">{{ trade.size | round(2) }}</td>
+                                <td class="px-4 py-3 text-right">{{ trade.price | round(4) }}</td>
+                                <td class="px-4 py-3 text-right">${{ '{:,.2f}'.format(trade.value) }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500">{{ trade.timestamp or '—' }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    {% if trade.transaction_hash %}
+                                    <a href="https://polygonscan.com/tx/{{ trade.transaction_hash }}" class="text-blue-600 hover:underline" target="_blank" rel="noopener">
+                                        {{ trade.transaction_hash[:10] }}…
+                                    </a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">No recent trades fetched.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </section>
+    {% endfor %}
